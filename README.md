@@ -1,5 +1,5 @@
 # vfox-flutter
-Python plugin for [vfox](https://vfox.lhan.me/).
+Flutter plugin for [vfox](https://vfox.lhan.me/).
 
 
 ## Install
