@@ -19,3 +19,27 @@ function getOsTypeAndArch()
         osType = osType, archType = archType
     }
 end
+
+function compare_versions(v1, v2)
+    local v1_parts = {}
+    for part in string.gmatch(v1, "%d+") do
+        table.insert(v1_parts, tonumber(part))
+    end
+
+    local v2_parts = {}
+    for part in string.gmatch(v2, "%d+") do
+        table.insert(v2_parts, tonumber(part))
+    end
+
+    for i = 1, math.max(#v1_parts, #v2_parts) do
+        local v1_part = v1_parts[i] or math.huge
+        local v2_part = v2_parts[i] or math.huge
+        if v1_part > v2_part then
+            return 1
+        elseif v1_part < v2_part then
+            return -1
+        end
+    end
+
+    return 0
+end
