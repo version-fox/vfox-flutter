@@ -28,7 +28,7 @@ function PLUGIN:Available(ctx)
         if (includeVersion) then
             table.insert(result, {
                 version = info.version,
-                url = body.base_url .. "/" .. info.archive,
+                url = getStorageBaseUrl() .. "/flutter_infra_release/releases/" .. info.archive,
                 sha256 = info.sha256,
                 key = info.hash,
                 note = info.channel,
