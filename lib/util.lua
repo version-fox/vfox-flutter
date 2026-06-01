@@ -1,5 +1,14 @@
+local DEFAULT_STORAGE_BASE_URL = "https://storage.googleapis.com"
 
-BASE_URL = "https://storage.googleapis.com/flutter_infra_release/releases/releases_%s.json"
+function getStorageBaseUrl()
+    local envUrl = os.getenv("FLUTTER_STORAGE_BASE_URL")
+    if envUrl ~= nil and envUrl ~= "" then
+        return envUrl:gsub("/$", "")
+    end
+    return DEFAULT_STORAGE_BASE_URL
+end
+
+BASE_URL = getStorageBaseUrl() .. "/flutter_infra_release/releases/releases_%s.json"
 
 
 function getOsTypeAndArch()
