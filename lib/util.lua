@@ -29,7 +29,17 @@ function getOsTypeAndArch()
     }
 end
 
+function splitVersionAndArch(version)
+    local base, arch = version:match("^(.+)%-(%w+)$")
+    if arch == "x64" or arch == "arm64" then
+        return base, arch
+    end
+    return version, nil
+end
+
 function compare_versions(v1, v2)
+    v1 = splitVersionAndArch(v1)
+    v2 = splitVersionAndArch(v2)
     local v1_parts = {}
     for part in string.gmatch(v1, "%d+") do
         table.insert(v1_parts, tonumber(part))

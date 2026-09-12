@@ -19,9 +19,30 @@ sudo apt install --assume-yes curl git unzip xz-utils zip libglu1-mesa
 vfox use --global flutter@3.44.0
 ```
 
+## Architecture selection
+
+Available releases include architecture suffixes such as `3.44.0-arm64` and
+`3.44.0-x64`. You can install both builds and switch between them:
+
+```bash
+vfox install flutter@3.44.0-arm64
+vfox install flutter@3.44.0-x64
+vfox use --global flutter@3.44.0-x64
+```
+
+On Apple Silicon, running an x64 build requires Rosetta. Only architectures
+provided by Flutter for the current operating system are listed.
+
+Commands without an architecture, such as `vfox install flutter@3.44.0` or
+`vfox install flutter@stable`, continue to select the host architecture and keep
+their existing version names. Channels also accept a suffix, such as
+`vfox install flutter@stable-x64`. The version list shows the default architecture
+first, followed by other architectures, with each group ordered by version.
+This keeps `@latest` on the default architecture.
+
 ## Mirror
 
-By default, Flutter SDK is downloaded from `https://storage.googleapis.com`. 
+By default, Flutter SDK is downloaded from `https://storage.googleapis.com`.
 If you have difficulty accessing it, you can set the `FLUTTER_STORAGE_BASE_URL` environment variable to use a mirror.
 
 ```bash

@@ -19,30 +19,41 @@ function PLUGIN:Available(ctx)
             break
         end
         local dartArch = info.dart_sdk_arch
-        local includeVersion = true
-        -- only flutter for macos supports different archs
-        if (type.osType == "macos") then
-            -- if dartArch is null, this means that the version does not support different archs
-            includeVersion = (dartArch == nil or dartArch == type.archType)
-        end
-        if (includeVersion) then
-            table.insert(result, {
-                version = info.version,
-                url = getStorageBaseUrl() .. "/flutter_infra_release/releases/" .. info.archive,
-                sha256 = info.sha256,
-                key = info.hash,
-                note = info.channel,
-                addition = {
-                    {
-                        name = "dart",
-                        version = info.dart_sdk_version
-                    }
+        version = dartArch and (version .. "-" .. dartArch) or version
+        table.insert(result, {
+            version = version,
+            url = getStorageBaseUrl() .. "/flutter_infra_release/releases/" .. info.archive,
+            sha256 = info.sha256,
+            key = info.hash,
+            note = info.channel,
+            addition = {
+                {
+                    name = "dart",
+                    version = info.dart_sdk_version
                 }
-            })
-        end
+            }
+        })
     end
     table.sort(result, function(a, b)
-        return compare_versions(a.version, b.version) > 0
+        -- Keep the default architecture first, including legacy releases with
+        -- no architecture metadata, so @latest cannot select a foreign build.
+        local _, aArch = splitVersionAndArch(a.version)
+        local _, bArch = splitVersionAndArch(b.version)
+        local aDefault = aArch == nil or aArch == type.archType
+        local bDefault = bArch == nil or bArch == type.archType
+        if aDefault ~= bDefault then
+            return aDefault
+        end
+        local order = compare_versions(a.version, b.version)
+        if order ~= 0 then
+            return order > 0
+        end
+        if aArch == type.archType then
+            return bArch ~= type.archType
+        elseif bArch == type.archType then
+            return false
+        end
+        return a.version < b.version
     end)
     return result
 end
