@@ -1,6 +1,6 @@
 # vfox-flutter
-Flutter plugin for [vfox](https://vfox.lhan.me/).
 
+Flutter plugin for [vfox](https://vfox.dev/).
 
 ## Install
 
@@ -10,6 +10,11 @@ After installing [vfox](https://github.com/version-fox/vfox), install the plugin
 vfox add flutter
 ```
 
+The Flutter SDK includes the Dart SDK; 
+if you install the Flutter SDK via the current vfox plugin, 
+there is no need to separately install the Dart SDK using the vfox plugin from 
+https://github.com/version-fox/vfox-dart .
+
 ### Example: Ubuntu 26.04
 
 ```bash
@@ -17,6 +22,13 @@ vfox add flutter
 vfox install flutter@3.44.0
 sudo apt install --assume-yes curl git unzip xz-utils zip libglu1-mesa
 vfox use --global flutter@3.44.0
+```
+
+You can verify this using the following command:
+
+```bash
+dart --version
+flutter --version --no-version-check
 ```
 
 ## Architecture selection
@@ -51,10 +63,10 @@ export FLUTTER_STORAGE_BASE_URL=https://storage.flutter-io.cn
 
 Common mirror values:
 
-| Mirror                               | URL                                        |
-|--------------------------------------|--------------------------------------------|
-| China Flutter User Group (CFUG)      | `https://storage.flutter-io.cn`            |
-| SJTU (Shanghai Jiao Tong University) | `https://mirror.sjtu.edu.cn/flutter_infra` |
+| Mirror                                        | URL                                     |
+|-----------------------------------------------|-----------------------------------------|
+| CFUG (China Flutter User Group)               | `https://storage.flutter-io.cn`         |
+| CERNET (China Education and Research Network) | `https://mirrors.cernet.edu.cn/flutter` |
 
 For an up-to-date list of available mirrors, refer to the MirrorZ Help site: https://help.mirrors.cernet.edu.cn/flutter/ .
 
