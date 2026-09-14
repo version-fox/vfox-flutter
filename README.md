@@ -70,6 +70,12 @@ Common mirror values:
 
 For an up-to-date list of available mirrors, refer to the MirrorZ Help site: https://help.mirrors.cernet.edu.cn/flutter/ .
 
+## Testing
+
+Offline Lua hook tests (`tests/hooks_test.lua`) run via the **Test Plugin** workflow. A
+containerized end-to-end suite exercises the plugin against real vfox (`latest` +
+`main`) on Linux and Windows — see [docs/e2e.md](docs/e2e.md).
+
 ## Releasing this plugin
 
 Maintainers can publish from **Actions → Plugin → Run workflow** on the default
