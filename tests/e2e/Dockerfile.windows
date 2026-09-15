@@ -1,0 +1,18 @@
+# escape=`
+FROM mcr.microsoft.com/windows/servercore:ltsc2025
+
+SHELL ["powershell", "-NoProfile", "-Command"]
+
+COPY tests/e2e/bootstrap-tools.ps1 C:\bootstrap-tools.ps1
+RUN powershell -NoProfile -ExecutionPolicy Bypass -File 'C:\bootstrap-tools.ps1'
+
+ENV PATH="C:\Program Files\PowerShell\7;C:\Program Files\Git\cmd;C:\Windows\System32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0"
+
+WORKDIR C:\e2e
+
+COPY metadata.lua C:\e2e\metadata.lua
+COPY hooks C:\e2e\hooks
+COPY lib C:\e2e\lib
+COPY tests/e2e C:\e2e\tests\e2e
+
+ENTRYPOINT ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "C:/e2e/tests/e2e/run.ps1"]

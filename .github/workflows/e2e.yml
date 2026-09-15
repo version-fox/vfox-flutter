@@ -1,0 +1,40 @@
+name: E2E
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e-linux:
+    if: github.repository == 'version-fox/vfox-flutter'
+    name: Linux container
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - run: docker build --pull -f tests/e2e/Dockerfile -t vfox-flutter-e2e .
+      - run: docker run --rm -e VFOX_VERSION=latest vfox-flutter-e2e
+      - run: docker run --rm -e VFOX_VERSION=main vfox-flutter-e2e
+
+  e2e-windows:
+    if: github.repository == 'version-fox/vfox-flutter'
+    name: Windows container
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - run: docker build --pull -f tests/e2e/Dockerfile.windows -t vfox-flutter-e2e .
+      - run: docker run --rm -e VFOX_VERSION=latest vfox-flutter-e2e
+      - run: docker run --rm -e VFOX_VERSION=main vfox-flutter-e2e

@@ -1,0 +1,8 @@
+.git
+.gitignore
+.idea
+.github
+*.md
+LICENSE
+.tool-versions
+Injection.lua
