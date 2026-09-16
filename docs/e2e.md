@@ -14,6 +14,7 @@ Execute in Bash,
 git clone git@github.com:version-fox/vfox-flutter.git
 cd ./vfox-flutter/
 docker build -f tests/e2e/Dockerfile -t vfox-flutter-e2e:linux .
+docker run --rm -e VFOX_VERSION=latest vfox-flutter-e2e:linux
 docker run --rm -e VFOX_VERSION=main vfox-flutter-e2e:linux
 ```
 
@@ -41,5 +42,6 @@ Invoke-WebRequest -UseBasicParsing `
 git clone git@github.com:version-fox/vfox-flutter.git
 cd ./vfox-flutter/
 docker build -f tests/e2e/Dockerfile.windows -t vfox-flutter-e2e:windows .
+docker run --rm -e VFOX_VERSION=latest vfox-flutter-e2e:windows
 docker run --rm -e VFOX_VERSION=main vfox-flutter-e2e:windows
 ```
