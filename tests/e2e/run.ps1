@@ -4,7 +4,7 @@ $PSNativeCommandUseErrorActionPreference = $true
 $VfoxVersion = if ($env:VFOX_VERSION) { $env:VFOX_VERSION } else { 'latest' }
 
 $RepoRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
-$WorkDir = "$env:TEMP\vfox-flutter-e2e"
+$WorkDir = "$env:TEMP/vfox-flutter-e2e"
 New-Item -ItemType Directory -Force -Path $WorkDir | Out-Null
 $VfoxExe = "$WorkDir\vfox.exe"
 $PluginZip = "$WorkDir\flutter.zip"
@@ -24,18 +24,19 @@ function Install-VfoxMain {
     & curl.exe -fsSL -o $goMsi 'https://go.dev/dl/go1.27.1.windows-amd64.msi'
     Start-Process msiexec.exe -Wait -ArgumentList '/i', "`"$goMsi`"", '/quiet', '/norestart'
     Remove-Item $goMsi
-    $env:PATH = "$WorkDir;" + [Environment]::GetEnvironmentVariable('Path', 'Machine')
     $src = "$WorkDir\vfox-src"
     git clone --depth 1 https://github.com/version-fox/vfox $src
-    Push-Location $src
-    try { go build -trimpath -o $VfoxExe . } finally { Pop-Location }
+    $buildScript = @"
+go build -C "$src" -trimpath -o "$VfoxExe" .
+"@
+    $build = Start-Process pwsh -Wait -PassThru -UseNewEnvironment -ArgumentList '-NoLogo', '-Command', $buildScript
+    if ($build.ExitCode -ne 0) { exit $build.ExitCode }
 }
 
 if ($VfoxVersion -eq 'main') { Install-VfoxMain } else { Install-VfoxRelease }
 
 tar -a -cf $PluginZip -C $RepoRoot metadata.lua hooks lib
 
-$Pwsh = 'C:\Program Files\PowerShell\7\pwsh.exe'
 if (-not (Test-Path $PROFILE)) { New-Item -ItemType File -Path $PROFILE -Force | Out-Null }
 Add-Content -Path $PROFILE -Value 'Invoke-Expression "$(vfox activate pwsh)"'
 
@@ -49,4 +50,4 @@ vfox use --global flutter@3.47.4
 dart --version
 flutter --version --no-version-check
 '@
-& $Pwsh -NoLogo -Command ($setup -f $PluginZip)
+& pwsh -NoLogo -Command ($setup -f $PluginZip)

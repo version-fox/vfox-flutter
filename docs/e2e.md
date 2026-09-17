@@ -6,7 +6,7 @@ containerized end-to-end suite exercises the plugin against real vfox (`latest` 
 
 ## Running on Ubuntu 26.04
 
-Assume that the rootful Docker Engine is already installed.
+Assume that Git and Docker Engine (in either rootful or rootless mode) are already installed.
 
 Execute in Bash,
 
