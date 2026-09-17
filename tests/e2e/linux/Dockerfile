@@ -17,6 +17,7 @@ EOF
 COPY metadata.lua /e2e/metadata.lua
 COPY hooks /e2e/hooks
 COPY lib /e2e/lib
-COPY tests/e2e /e2e/tests/e2e
+COPY tests/e2e/linux /e2e/tests/e2e/linux
 
-ENTRYPOINT ["bash", "/e2e/tests/e2e/run.sh"]
+ENTRYPOINT ["bash"]
+CMD ["/e2e/tests/e2e/linux/run.sh"]

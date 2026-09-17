@@ -1,10 +1,14 @@
 local http = require("http")
 local json = require("json")
+local ohos = require("ohos")
 
 require("util")
 
 function PLUGIN:PreInstall(ctx)
     local arg, requestedArch = splitVersionAndArch(ctx.version)
+    if ohos.isOhosVersion(arg) then
+        return ohos.checkout(arg, requestedArch)
+    end
     local platform = getOsTypeAndArch()
     local targetArch = requestedArch or platform.archType
     local channelKey
@@ -48,4 +52,11 @@ function PLUGIN:PreInstall(ctx)
         end
     end
     return legacy
+end
+
+function PLUGIN:PostInstall(ctx)
+    local sdk = ctx.sdkInfo and ctx.sdkInfo[PLUGIN.name]
+    if sdk ~= nil and ohos.isOhosVersion(sdk.version) then
+        ohos.clean(sdk.version)
+    end
 end

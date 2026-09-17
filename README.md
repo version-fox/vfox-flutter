@@ -70,9 +70,13 @@ Common mirror values:
 
 For an up-to-date list of available mirrors, refer to the MirrorZ Help site: https://help.mirrors.cernet.edu.cn/flutter/ .
 
+## OpenHarmony builds
+
+See [docs/ohos.md](docs/ohos.md) for details.
+
 ## Testing
 
-See [docs/e2e.md](docs/e2e.md).
+See [docs/e2e.md](docs/e2e.md) for details.
 
 ## Releasing this plugin
 

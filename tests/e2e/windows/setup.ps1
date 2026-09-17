@@ -3,8 +3,8 @@ $PSNativeCommandUseErrorActionPreference = $true
 
 $VfoxVersion = if ($env:VFOX_VERSION) { $env:VFOX_VERSION } else { 'latest' }
 
-$RepoRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
-$WorkDir = "$env:TEMP/vfox-flutter-e2e"
+$RepoRoot = (Resolve-Path "$PSScriptRoot\..\..\..").Path
+$WorkDir = "$env:TEMP\vfox-flutter-e2e"
 New-Item -ItemType Directory -Force -Path $WorkDir | Out-Null
 $VfoxExe = "$WorkDir\vfox.exe"
 $PluginZip = "$WorkDir\flutter.zip"
@@ -36,18 +36,4 @@ go build -C "$src" -trimpath -o "$VfoxExe" .
 if ($VfoxVersion -eq 'main') { Install-VfoxMain } else { Install-VfoxRelease }
 
 tar -a -cf $PluginZip -C $RepoRoot metadata.lua hooks lib
-
-if (-not (Test-Path $PROFILE)) { New-Item -ItemType File -Path $PROFILE -Force | Out-Null }
-Add-Content -Path $PROFILE -Value 'Invoke-Expression "$(vfox activate pwsh)"'
-
-$setup = @'
-$ErrorActionPreference = 'Stop'
-$PSNativeCommandUseErrorActionPreference = $true
-vfox add flutter --source '{0}'
-vfox install flutter@3.47.4
-vfox use --global flutter@3.47.4
-. $PROFILE
-dart --version
-flutter --version --no-version-check
-'@
-& pwsh -NoLogo -Command ($setup -f $PluginZip)
+vfox add flutter --source $PluginZip
