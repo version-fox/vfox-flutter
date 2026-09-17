@@ -19,9 +19,9 @@ https://github.com/version-fox/vfox-dart .
 
 ```bash
 vfox add flutter
-vfox install flutter@3.44.0
+vfox install flutter@3.47.4
 sudo apt install --assume-yes curl git unzip xz-utils zip libglu1-mesa
-vfox use --global flutter@3.44.0
+vfox use --global flutter@3.47.4
 ```
 
 You can verify this using the following command:
@@ -33,19 +33,19 @@ flutter --version --no-version-check
 
 ## Architecture selection
 
-Available releases include architecture suffixes such as `3.44.0-arm64` and
-`3.44.0-x64`. You can install both builds and switch between them:
+Available releases include architecture suffixes such as `3.47.4-arm64` and
+`3.47.4-x64`. You can install both builds and switch between them:
 
 ```bash
-vfox install flutter@3.44.0-arm64
-vfox install flutter@3.44.0-x64
-vfox use --global flutter@3.44.0-x64
+vfox install flutter@3.47.4-arm64
+vfox install flutter@3.47.4-x64
+vfox use --global flutter@3.47.4-x64
 ```
 
 On Apple Silicon, running an x64 build requires Rosetta. Only architectures
 provided by Flutter for the current operating system are listed.
 
-Commands without an architecture, such as `vfox install flutter@3.44.0` or
+Commands without an architecture, such as `vfox install flutter@3.47.4` or
 `vfox install flutter@stable`, continue to select the host architecture and keep
 their existing version names. Channels also accept a suffix, such as
 `vfox install flutter@stable-x64`. The version list shows the default architecture
@@ -69,6 +69,10 @@ Common mirror values:
 | CERNET (China Education and Research Network) | `https://mirrors.cernet.edu.cn/flutter` |
 
 For an up-to-date list of available mirrors, refer to the MirrorZ Help site: https://help.mirrors.cernet.edu.cn/flutter/ .
+
+## Testing
+
+See [docs/e2e.md](docs/e2e.md).
 
 ## Releasing this plugin
 
