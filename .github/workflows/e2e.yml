@@ -29,4 +29,4 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
-      - run: pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File tests/e2e/windows/e2e.ps1
+      - run: pwsh -NoProfile -File tests/e2e/windows/e2e.ps1

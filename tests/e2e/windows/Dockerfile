@@ -13,5 +13,5 @@ COPY hooks C:\e2e\hooks
 COPY lib C:\e2e\lib
 COPY tests/e2e/windows C:\e2e\tests\e2e\windows
 
-ENTRYPOINT ["C:/Program Files/PowerShell/7/pwsh.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File"]
+ENTRYPOINT ["C:/Program Files/PowerShell/7/pwsh.exe", "-File"]
 CMD ["C:/e2e/tests/e2e/windows/run.ps1"]

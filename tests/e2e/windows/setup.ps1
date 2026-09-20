@@ -29,11 +29,23 @@ function Install-VfoxMain {
     $buildScript = @"
 go build -C "$src" -trimpath -o "$VfoxExe" .
 "@
-    $build = Start-Process pwsh -Wait -PassThru -UseNewEnvironment -ArgumentList '-NoLogo', '-Command', $buildScript
-    if ($build.ExitCode -ne 0) { exit $build.ExitCode }
+    $build = Start-Process pwsh -Wait -PassThru -UseNewEnvironment -ArgumentList '-Command', $buildScript
+    if ($build.ExitCode -ne 0) { throw "FAIL vfox build from main exited with code $($build.ExitCode)" }
 }
 
 if ($VfoxVersion -eq 'main') { Install-VfoxMain } else { Install-VfoxRelease }
 
 tar -a -cf $PluginZip -C $RepoRoot metadata.lua hooks lib
+if ($LASTEXITCODE -ne 0) { throw "FAIL tar packaging exited with code $LASTEXITCODE" }
 vfox add flutter --source $PluginZip
+if ($LASTEXITCODE -ne 0) { throw "FAIL vfox add flutter --source exited with code $LASTEXITCODE" }
+
+$ProfileDir = Split-Path -Parent $PROFILE
+if (-not (Test-Path $ProfileDir)) {
+    New-Item -ItemType Directory -Force -Path $ProfileDir | Out-Null
+}
+if (-not (Test-Path $PROFILE)) {
+    New-Item -ItemType File -Force -Path $PROFILE | Out-Null
+}
+Add-Content -Path $PROFILE -Value "`$env:PATH = `"$WorkDir;`$env:PATH`""
+Add-Content -Path $PROFILE -Value 'Invoke-Expression "$(vfox activate pwsh)"'

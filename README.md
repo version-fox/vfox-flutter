@@ -74,6 +74,10 @@ For an up-to-date list of available mirrors, refer to the MirrorZ Help site: htt
 
 See [docs/ohos.md](docs/ohos.md) for details.
 
+## Install from source
+
+See [docs/install-from-source.md](docs/install-from-source.md) for details.
+
 ## Testing
 
 See [docs/e2e.md](docs/e2e.md) for details.
