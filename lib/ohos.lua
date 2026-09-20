@@ -116,7 +116,7 @@ local function makeParentDir(dir)
         return
     end
     if RUNTIME.osType == "windows" then
-        os.execute("mkdir " .. parent)
+        os.execute('if not exist "' .. parent .. '" mkdir "' .. parent .. '"')
     else
         os.execute("mkdir -p " .. quote(parent))
     end

@@ -46,5 +46,5 @@ Invoke-WebRequest -UseBasicParsing `
 ```powershell
 git clone git@github.com:version-fox/vfox-flutter.git
 cd ./vfox-flutter/
-pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\e2e\windows\e2e.ps1
+pwsh -NoProfile -File .\tests\e2e\windows\e2e.ps1
 ```
