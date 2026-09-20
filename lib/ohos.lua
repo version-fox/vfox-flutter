@@ -171,7 +171,7 @@ end
 function M.clean(version)
     local dir = workDir(version)
     if dir ~= nil then
-        resetDir(dir)
+        removeDir(dir)
     end
 end
 
