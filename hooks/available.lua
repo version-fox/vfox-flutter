@@ -1,5 +1,6 @@
 local http = require("http")
 local json = require("json")
+local ohos = require("ohos")
 
 require("util")
 function PLUGIN:Available(ctx)
@@ -34,7 +35,15 @@ function PLUGIN:Available(ctx)
             }
         })
     end
+    for _, info in ipairs(ohos.list()) do
+        table.insert(result, info)
+    end
     table.sort(result, function(a, b)
+        local aOhos = ohos.isOhosVersion(a.version)
+        local bOhos = ohos.isOhosVersion(b.version)
+        if aOhos ~= bOhos then
+            return bOhos
+        end
         -- Keep the default architecture first, including legacy releases with
         -- no architecture metadata, so @latest cannot select a foreign build.
         local _, aArch = splitVersionAndArch(a.version)
