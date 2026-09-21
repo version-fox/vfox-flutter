@@ -36,7 +36,7 @@ end
 
 local function removeDir(path)
     if RUNTIME.osType == "windows" then
-        os.execute("rmdir /s /q " .. quote(path))
+        os.execute('if exist "' .. path .. '" rmdir /s /q "' .. path .. '"')
     else
         os.execute("rm -rf " .. quote(path))
     end
@@ -111,15 +111,14 @@ local function parentDir(dir)
 end
 
 local function makeParentDir(dir)
+    if RUNTIME.osType == "windows" then
+        return
+    end
     local parent = parentDir(dir)
     if parent == nil then
         return
     end
-    if RUNTIME.osType == "windows" then
-        os.execute('if not exist "' .. parent .. '" mkdir "' .. parent .. '"')
-    else
-        os.execute("mkdir -p " .. quote(parent))
-    end
+    os.execute("mkdir -p " .. quote(parent))
 end
 
 local function resetDir(dir)
