@@ -37,6 +37,9 @@ vfox search flutter
   from Huawei's OBS, so it needs a network connection.
 - **No checksum is verified.** Git history is the integrity check, and this is a
   third-party fork, so review its source before trusting it.
+- **Mirrors don't apply.** `FLUTTER_STORAGE_BASE_URL` (see `mirror.md`) only affects
+  official SDK downloads; OpenHarmony builds are cloned from gitcode, so the variable
+  is ignored.
 
 ### Building OpenHarmony applications
 
