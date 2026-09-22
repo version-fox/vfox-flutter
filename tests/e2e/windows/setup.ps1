@@ -12,16 +12,18 @@ $env:PATH = "$WorkDir;$env:PATH"
 
 function Install-VfoxRelease {
     $tag = ((& curl.exe -fsSLI -o NUL -w '%{url_effective}' 'https://github.com/version-fox/vfox/releases/latest') -split '/tag/')[-1].Trim()
+    $vfoxArch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'aarch64' } else { 'x86_64' }
     $zip = "$WorkDir\vfox.zip"
-    & curl.exe -fsSL -o $zip "https://github.com/version-fox/vfox/releases/download/$tag/vfox_$($tag.TrimStart('v'))_windows_x86_64.zip"
+    & curl.exe -fsSL -o $zip "https://github.com/version-fox/vfox/releases/download/$tag/vfox_$($tag.TrimStart('v'))_windows_$vfoxArch.zip"
     tar -xf $zip -C $WorkDir
     Remove-Item $zip
     Copy-Item -Path (Get-ChildItem -Path $WorkDir -Recurse -Filter 'vfox.exe') -Destination $VfoxExe
 }
 
 function Install-VfoxMain {
+    $goArch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'amd64' }
     $goMsi = "$env:TEMP\go.msi"
-    & curl.exe -fsSL -o $goMsi 'https://go.dev/dl/go1.27.1.windows-amd64.msi'
+    & curl.exe -fsSL -o $goMsi "https://go.dev/dl/go1.27.1.windows-$goArch.msi"
     Start-Process msiexec.exe -Wait -ArgumentList '/i', "`"$goMsi`"", '/quiet', '/norestart'
     Remove-Item $goMsi
     $src = "$WorkDir\vfox-src"

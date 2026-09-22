@@ -28,9 +28,14 @@ jobs:
 
   e2e-windows:
     if: github.repository == 'version-fox/vfox-flutter'
-    name: Windows container (amd64)
-    runs-on: windows-latest
-    timeout-minutes: 90
+    name: Windows container (${{ matrix.runs-on }})
+    strategy:
+      fail-fast: false
+      matrix:
+        runs-on: [windows-latest, windows-11-arm]
+    runs-on: ${{ matrix.runs-on }}
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
+      - run: pwsh -NoProfile -File tests/e2e/windows/install-docker.ps1
       - run: pwsh -NoProfile -File tests/e2e/windows/e2e.ps1

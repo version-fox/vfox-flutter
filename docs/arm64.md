@@ -16,30 +16,35 @@ their existing version names. Channels also accept a suffix, such as
 first, followed by other architectures, with each group ordered by version.
 This keeps `@latest` on the default architecture.
 
-Only architectures provided by Flutter for the current operating system are
-listed. On Apple Silicon, running an x64 build requires Rosetta.
+Only architectures provided by Flutter for the current operating system are listed.
+
+## MacOS ARM64
+
+On Apple Silicon, running an x64 build requires Rosetta.
 
 ## Linux ARM64
 
 On Linux ARM64 the plugin installs the official `flutter/flutter` git tag
 instead of a prebuilt bundle. The Flutter tool bootstraps the matching native
 `dart-sdk-linux-arm64` itself on first run, so the result is a native SDK.
-This follows the same pattern as the OpenHarmony builds (`lib/ohos.lua`):
-`Available` advertises one `-arm64` entry per `x64` release whose `url` is the
-clone URL, and `PreInstall` materializes the tag into a local directory under
-`~/.vfox/tmp` that vfox consumes. `PostInstall` removes that throwaway
-checkout.
 
 Explicit `-x64` requests still resolve to the upstream archive, which cannot
 run on Linux ARM64.
 
 ## Windows ARM64
 
-Not supported: upstream publishes no `windows-arm64` archives, so no `-arm64`
-entries are listed and installs fail instead of handing out an unusable `x64`
-bundle.
+On Windows ARM64 the plugin installs the official `flutter/flutter` git tag
+instead of a prebuilt bundle, for the same reason as Linux ARM64: upstream
+publishes no `windows-arm64` archives. The Flutter tool bootstraps the matching
+native `dart-sdk-windows-arm64` itself on first run, so the result is a native
+SDK.
+
+Explicit `-x64` requests still resolve to the upstream archive, which cannot
+run on Windows ARM64.
 
 # Limits
+
+## Linux ARM64 and Windows ARM64
 
 - **`git` is required.** The checkout runs `git init` / `fetch` / `checkout`
   against `https://github.com/flutter/flutter.git`.
