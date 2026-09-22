@@ -15,8 +15,12 @@ concurrency:
 jobs:
   e2e-linux:
     if: github.repository == 'version-fox/vfox-flutter'
-    name: Linux container
-    runs-on: ubuntu-latest
+    name: Linux container (${{ matrix.runs-on }})
+    strategy:
+      fail-fast: false
+      matrix:
+        runs-on: [ubuntu-latest, ubuntu-26.04-arm]
+    runs-on: ${{ matrix.runs-on }}
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
@@ -24,7 +28,7 @@ jobs:
 
   e2e-windows:
     if: github.repository == 'version-fox/vfox-flutter'
-    name: Windows container
+    name: Windows container (amd64)
     runs-on: windows-latest
     timeout-minutes: 90
     steps:

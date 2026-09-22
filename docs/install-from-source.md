@@ -5,6 +5,7 @@
 Execute in Bash,
 
 ```bash
+sudo apt install --assume-yes git
 git clone --depth 1 https://github.com/version-fox/vfox-flutter.git
 cd ./vfox-flutter/
 zip -qr ./flutter.zip metadata.lua hooks lib

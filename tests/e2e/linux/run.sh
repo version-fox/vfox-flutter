@@ -32,10 +32,18 @@ else
     exit 1
 fi
 
-echo "=== vfox ${VFOX_VERSION:-latest}, flutter $version, $flavor, mirror $mirror ==="
+echo "=== vfox ${VFOX_VERSION:-latest}, flutter $version, $flavor, mirror $mirror, $(uname -m) ==="
 if [ "$flavor" = official ] && [ "$mirror" != default ]; then
     mirror_index="${mirror%/}/flutter_infra_release/releases/releases_linux.json"
-    if ! curl -fsSL --max-time 20 -o /dev/null "$mirror_index"; then
+    mirror_ok=0
+    for attempt in 1 2 3; do
+        if curl -fsSL --max-time 20 -o /dev/null "$mirror_index"; then
+            mirror_ok=1
+            break
+        fi
+        sleep 10
+    done
+    if [ "$mirror_ok" -ne 1 ]; then
         echo "FAIL mirror $mirror is unreachable ($mirror_index)" >&2
         exit 1
     fi

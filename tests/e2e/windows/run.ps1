@@ -12,15 +12,21 @@ $version = if ($flavor -eq 'official') {
     throw "FAIL unknown flavor $flavor"
 }
 
-Write-Output ("=== vfox {0}, flutter {1}, {2}, mirror {3} ===" -f $vfox, $version, $flavor, $mirror)
+Write-Output ("=== vfox {0}, flutter {1}, {2}, mirror {3}, {4} ===" -f $vfox, $version, $flavor, $mirror, $env:PROCESSOR_ARCHITECTURE)
 if (($flavor -eq 'official') -and ($mirror -ne 'default')) {
     $mirrorIndex = $mirror.TrimEnd('/') + '/flutter_infra_release/releases/releases_windows.json'
-    try {
+    $mirrorOk = $false
+    $PSNativeCommandUseErrorActionPreference = $false
+    for ($attempt = 1; $attempt -le 3; $attempt++) {
         & curl.exe -fsSL --max-time 20 -o NUL $mirrorIndex
-    } catch {
-        throw "FAIL mirror $mirror is unreachable ($mirrorIndex)"
+        if ($LASTEXITCODE -eq 0) {
+            $mirrorOk = $true
+            break
+        }
+        Start-Sleep -Seconds 10
     }
-    if ($LASTEXITCODE -ne 0) { throw "FAIL mirror $mirror is unreachable ($mirrorIndex)" }
+    $PSNativeCommandUseErrorActionPreference = $true
+    if (-not $mirrorOk) { throw "FAIL mirror $mirror is unreachable ($mirrorIndex)" }
     Write-Output "PASS mirror $mirror serves the releases index"
 }
 . "$PSScriptRoot\setup.ps1"

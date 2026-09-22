@@ -1,11 +1,5 @@
-local http = require("http")
-local json = require("json")
-
-local MARKER = "-ohos-"
-local REPO = "CPF-Flutter/flutter_flutter"
-local RELEASES_URL = "https://gitcode.com/api/v5/repos/%s/releases?per_page=100"
-local CLONE_URL = "https://gitcode.com/%s.git"
-local NOTE = "OpenHarmony"
+local REPO = "flutter/flutter"
+local CLONE_URL = "https://github.com/%s.git"
 local HOME_ENV = "VFOX_HOME"
 local FALLBACK_HOME_ENV = { "HOME", "USERPROFILE" }
 local VFOX_DIR = ".vfox"
@@ -14,8 +8,12 @@ local ENGINE_PIN = "bin/internal/engine.version"
 
 local M = {}
 
-function M.isOhosVersion(version)
-    return type(version) == "string" and version:find(MARKER, 1, true) ~= nil
+function M.repoUrl()
+    return CLONE_URL:format(REPO)
+end
+
+function M.supports(osType, archType)
+    return osType == "linux" and archType == "arm64"
 end
 
 local function quote(value)
@@ -52,34 +50,6 @@ end
 local function localPath(path)
     local translated = path:gsub("/", sep())
     return translated
-end
-
-local function releases()
-    local resp, err = http.get({ url = RELEASES_URL:format(REPO) })
-    if err ~= nil or resp.status_code ~= 200 then
-        return nil
-    end
-    local body = json.decode(resp.body)
-    if type(body) ~= "table" then
-        return nil
-    end
-    return body
-end
-
-function M.list()
-    local result = {}
-    for _, info in ipairs(releases() or {}) do
-        local version = info.tag_name
-        if M.isOhosVersion(version) then
-            table.insert(result, {
-                version = version,
-                url = CLONE_URL:format(REPO),
-                key = version,
-                note = NOTE
-            })
-        end
-    end
-    return result
 end
 
 local function vfoxHome()
@@ -126,51 +96,59 @@ local function resetDir(dir)
     makeParentDir(dir)
 end
 
-function M.checkout(version, requestedArch)
-    if requestedArch ~= nil then
-        return nil
-    end
-    local commit
-    for _, info in ipairs(releases() or {}) do
-        if info.tag_name == version then
-            commit = info.target_commitish
-            break
+function M.list(releases)
+    local result = {}
+    for _, info in ipairs(releases or {}) do
+        if type(info.version) == "string" and string.sub(info.version, 1, 1) ~= "v"
+            and info.dart_sdk_arch == "x64" then
+            table.insert(result, {
+                version = info.version .. "-arm64",
+                url = M.repoUrl(),
+                key = info.hash,
+                note = info.channel,
+                source = true,
+                addition = {
+                    {
+                        name = "dart",
+                        version = info.dart_sdk_version
+                    }
+                }
+            })
         end
     end
-    if commit == nil or commit == "" then
+    return result
+end
+
+function M.checkout(baseVersion, versionName)
+    if type(baseVersion) ~= "string" or baseVersion == "" then
         return nil
     end
-    local dir = workDir(version)
+    if type(versionName) ~= "string" or versionName == "" then
+        versionName = baseVersion
+    end
+    local dir = workDir(versionName)
     if dir == nil then
         error("cannot resolve the vfox home directory")
     end
-    local cloneUrl = CLONE_URL:format(REPO)
+    local cloneUrl = M.repoUrl()
     resetDir(dir)
     if not run("git init -q " .. quote(dir)) then
         error("failed to initialize git in " .. dir .. " (is git installed?)")
     end
-    local fetched = false
-    for _ = 1, 3 do
-        if git(dir, "fetch -q --depth 1 " .. cloneUrl .. " " .. commit) then
-            fetched = true
-            break
-        end
-    end
-    if not fetched then
-        error("failed to fetch " .. commit .. " from " .. cloneUrl)
+    if not git(dir, "fetch -q --depth 1 " .. cloneUrl .. " refs/tags/" .. baseVersion) then
+        error("failed to fetch tag " .. baseVersion .. " from " .. cloneUrl)
     end
     if not git(dir, "checkout -q FETCH_HEAD") then
-        error("failed to check out " .. commit .. " in " .. dir)
+        error("failed to check out " .. baseVersion .. " in " .. dir)
     end
     local pin = io.open(localPath(dir .. "/" .. ENGINE_PIN), "r")
     if pin == nil then
-        error("the checkout at " .. commit .. " has no engine version pin")
+        error("the checkout at " .. baseVersion .. " has no engine version pin")
     end
     pin:close()
     return {
-        version = version,
-        url = dir,
-        note = NOTE
+        version = versionName,
+        url = dir
     }
 end
 

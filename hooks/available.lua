@@ -1,6 +1,7 @@
 local http = require("http")
 local json = require("json")
 local ohos = require("ohos")
+local source = require("source")
 
 require("util")
 function PLUGIN:Available(ctx)
@@ -9,7 +10,7 @@ function PLUGIN:Available(ctx)
         url = BASE_URL:format(type.osType)
     })
     if err ~= nil or resp.status_code ~= 200 then
-        error("get version failed" .. err)
+        error("get version failed: " .. tostring(err) .. " (status " .. tostring(resp and resp.status_code) .. ")")
     end
     local body = json.decode(resp.body)
     local result = {}
@@ -37,6 +38,11 @@ function PLUGIN:Available(ctx)
     end
     for _, info in ipairs(ohos.list()) do
         table.insert(result, info)
+    end
+    if source.supports(type.osType, type.archType) then
+        for _, info in ipairs(source.list(body.releases)) do
+            table.insert(result, info)
+        end
     end
     table.sort(result, function(a, b)
         local aOhos = ohos.isOhosVersion(a.version)

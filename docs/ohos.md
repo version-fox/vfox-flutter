@@ -4,7 +4,8 @@
 
 `git` is required:
 
-1. `winget install --id Git.Git --source winget --exact` on Windows 11.
+1. `sudo apt install --assume-yes git` on Ubuntu 26.04.1
+2. `winget install --id Git.Git --source winget --exact` on Windows 11
 
 ## Instructions for Use
 
@@ -29,8 +30,9 @@ vfox search flutter
 - **Install by exact version.** OpenHarmony versions sort after the official releases,
   so `@latest` and the `stable`/`beta`/`dev` channels never select one.
 - **No architecture variants.** `flutter@3.41.10-ohos-1.0.0-x64` is not supported.
-- **`linux-arm64`.** Newer releases have no published `dart-sdk-linux-arm64`, so use a
-  `3.2x.x-ohos-*` version there.
+- **`linux-arm64`.** Upstream publishes only x64 Dart SDKs, so the first
+  `flutter` run fails there (`It appears that the downloaded file is corrupt`).
+  The Linux ARM64 e2e runs the official flavor only.
 - **A Windows home containing a space** (`C:\Users\John Doe\.vfox`) is not supported;
   point vfox at a path without spaces with `$env:VFOX_HOME = 'D:\vfox'`.
 - **The first `flutter` command is slow.** It builds the tool and downloads the Dart SDK

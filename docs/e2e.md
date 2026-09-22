@@ -5,16 +5,31 @@ The end-to-end suite runs in containers against real vfox (`latest` and `main`) 
 and Windows; each of the four `vfox` x `flavor` combinations gets its own throwaway
 container.
 
-## Ubuntu 26.04
+## Ubuntu 26.04.1
 
-Assume that Git and Docker Engine (in either rootful or rootless mode) are already installed.
+Assume that Docker Engine (in either rootful or rootless mode) is already installed.
 
 Execute in Bash,
 
 ```bash
+sudo apt install --assume-yes git
 git clone git@github.com:version-fox/vfox-flutter.git
 cd ./vfox-flutter/
 bash tests/e2e/linux/e2e.sh
+```
+
+On ARM64 it runs the official flavor only: OpenHarmony publishes no `linux-arm64` Dart SDK (see `docs/ohos.md`), so the
+ohos flavor cannot bootstrap there.
+
+### Run the ARM64 E2E on a x64 host
+
+To run the ARM64 E2E on an x64 host instead (emulated, much slower),
+register QEMU binfmt support with one command (re-run after each reboot) and
+override the architecture:
+
+```bash
+docker run --privileged --rm tonistiigi/binfmt --install all
+ARCH=arm64 bash tests/e2e/linux/e2e.sh
 ```
 
 ## Running on Windows 11 Pro
