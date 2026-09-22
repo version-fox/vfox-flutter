@@ -33,24 +33,7 @@ flutter --version --no-version-check
 
 ## Architecture selection
 
-Available releases include architecture suffixes such as `3.47.4-arm64` and
-`3.47.4-x64`. You can install both builds and switch between them:
-
-```bash
-vfox install flutter@3.47.4-arm64
-vfox install flutter@3.47.4-x64
-vfox use --global flutter@3.47.4-x64
-```
-
-On Apple Silicon, running an x64 build requires Rosetta. Only architectures
-provided by Flutter for the current operating system are listed.
-
-Commands without an architecture, such as `vfox install flutter@3.47.4` or
-`vfox install flutter@stable`, continue to select the host architecture and keep
-their existing version names. Channels also accept a suffix, such as
-`vfox install flutter@stable-x64`. The version list shows the default architecture
-first, followed by other architectures, with each group ordered by version.
-This keeps `@latest` on the default architecture.
+See [docs/arm64.md](docs/arm64.md) for details.
 
 ## Mirror
 

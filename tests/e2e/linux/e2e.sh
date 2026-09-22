@@ -3,13 +3,27 @@ set -euo pipefail
 
 here="$(dirname "${BASH_SOURCE[0]}")"
 repo="$(cd "$here/../../.." && pwd)"
-image="vfox-flutter-e2e:linux"
 
-docker build --pull -f "$here/Dockerfile" -t "$image" "$repo"
+host_arch="$(uname -m)"
+case "$host_arch" in
+    x86_64) host_arch="amd64" ;;
+    aarch64|arm64) host_arch="arm64" ;;
+esac
+arch="${ARCH:-$host_arch}"
+platform="linux/$arch"
+image="vfox-flutter-e2e:linux-$arch"
+
+docker build --pull --platform "$platform" -f "$here/Dockerfile" -t "$image" "$repo"
 
 foxes="${VFOX_VERSION:-latest main}"
-flavours="${FLAVOR:-official ohos}"
-mirrors="${MIRROR:-default https://storage.flutter-io.cn}"
+default_flavours="official ohos"
+default_mirrors="default https://storage.flutter-io.cn"
+if [ "$arch" = arm64 ]; then
+    default_flavours="official"
+    default_mirrors="default"
+fi
+flavours="${FLAVOR:-$default_flavours}"
+mirrors="${MIRROR:-$default_mirrors}"
 mirror_explicit="${MIRROR:-}"
 
 max_jobs=3
@@ -19,10 +33,11 @@ run_one() {
     local vfox="$1"
     local flavor="$2"
     local mirror="$3"
+    local prefix="vfox $vfox, $flavor, mirror $mirror, $platform"
     if [ "$mirror" = default ]; then
-        docker run --rm -e VFOX_VERSION="$vfox" -e FLAVOR="$flavor" "$image" 2>&1 | sed -e "s|^|[vfox $vfox, $flavor, mirror $mirror] |"
+        docker run --rm --platform "$platform" -e VFOX_VERSION="$vfox" -e FLAVOR="$flavor" "$image" 2>&1 | sed -e "s|^|[$prefix] |"
     else
-        docker run --rm -e VFOX_VERSION="$vfox" -e FLAVOR="$flavor" -e FLUTTER_STORAGE_BASE_URL="$mirror" "$image" 2>&1 | sed -e "s|^|[vfox $vfox, $flavor, mirror $mirror] |"
+        docker run --rm --platform "$platform" -e VFOX_VERSION="$vfox" -e FLAVOR="$flavor" -e FLUTTER_STORAGE_BASE_URL="$mirror" "$image" 2>&1 | sed -e "s|^|[$prefix] |"
     fi
 }
 

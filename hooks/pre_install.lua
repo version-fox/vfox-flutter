@@ -1,6 +1,7 @@
 local http = require("http")
 local json = require("json")
 local ohos = require("ohos")
+local source = require("source")
 
 require("util")
 
@@ -17,7 +18,7 @@ function PLUGIN:PreInstall(ctx)
             url = BASE_URL:format(platform.osType)
         })
         if err ~= nil or resp.status_code ~= 200 then
-            error("get version failed" .. err)
+            error("get version failed: " .. tostring(err) .. " (status " .. tostring(resp and resp.status_code) .. ")")
         end
         local body = json.decode(resp.body)
         channelKey = body.current_release[arg]
@@ -27,10 +28,12 @@ function PLUGIN:PreInstall(ctx)
     end
 
     local function package(info, version)
+        local versionName = requestedArch and info.version or version
+        if info.source then
+            return source.checkout(version, versionName)
+        end
         return {
-            -- Keep existing unqualified install/use commands and directory
-            -- names. Explicit architecture requests get distinct versions.
-            version = requestedArch and info.version or version,
+            version = versionName,
             url = info.url,
             sha256 = info.sha256
         }
@@ -56,7 +59,12 @@ end
 
 function PLUGIN:PostInstall(ctx)
     local sdk = ctx.sdkInfo and ctx.sdkInfo[PLUGIN.name]
-    if sdk ~= nil and ohos.isOhosVersion(sdk.version) then
-        ohos.clean(sdk.version)
+    if sdk == nil then
+        return
     end
+    if ohos.isOhosVersion(sdk.version) then
+        ohos.clean(sdk.version)
+        return
+    end
+    pcall(source.clean, sdk.version)
 end
