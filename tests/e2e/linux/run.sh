@@ -22,6 +22,7 @@ assert_contains() {
 }
 
 flavor="${FLAVOR:?missing flavor}"
+mirror="${FLUTTER_STORAGE_BASE_URL:-default}"
 if [ "$flavor" = official ]; then
     version="${FLUTTER_VERSION:-3.47.4}"
 elif [ "$flavor" = ohos ]; then
@@ -31,8 +32,28 @@ else
     exit 1
 fi
 
-echo "=== vfox ${VFOX_VERSION:-latest}, flutter $version, $flavor ==="
+echo "=== vfox ${VFOX_VERSION:-latest}, flutter $version, $flavor, mirror $mirror ==="
+if [ "$flavor" = official ] && [ "$mirror" != default ]; then
+    mirror_index="${mirror%/}/flutter_infra_release/releases/releases_linux.json"
+    if ! curl -fsSL --max-time 20 -o /dev/null "$mirror_index"; then
+        echo "FAIL mirror $mirror is unreachable ($mirror_index)" >&2
+        exit 1
+    fi
+    echo "PASS mirror $mirror serves the releases index"
+fi
 source "$here/setup.sh"
+if [ "$flavor" = official ]; then
+    bogus_mirror="https://invalid.example.invalid"
+    set +e
+    bogus_output="$(FLUTTER_STORAGE_BASE_URL="$bogus_mirror" vfox install flutter@"$version" 2>&1)"
+    bogus_code=$?
+    set -e
+    if [ "$bogus_code" -eq 0 ]; then
+        echo 'FAIL bogus mirror install unexpectedly succeeded' >&2
+        exit 1
+    fi
+    assert_contains "$bogus_output" "invalid.example.invalid" 'bogus mirror error'
+fi
 bash "$here/install.sh" "$version"
 eval "$(vfox activate bash)"
 sdk="$(cd "$(dirname "$(command -v flutter)")"/.. && pwd)"
