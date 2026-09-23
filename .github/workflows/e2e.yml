@@ -37,5 +37,6 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
-      - run: pwsh -NoProfile -File tests/e2e/windows/install-docker.ps1
+      - if: matrix.runs-on == 'windows-11-arm'
+        run: pwsh -NoProfile -File tests/e2e/windows/install-docker.ps1
       - run: pwsh -NoProfile -File tests/e2e/windows/e2e.ps1

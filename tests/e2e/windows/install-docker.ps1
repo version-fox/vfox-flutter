@@ -18,55 +18,34 @@ function Wait-Engine {
     return $false
 }
 
-function Probe-Containers {
-    $operatingSystem = Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue
-    $computerSystem = Get-CimInstance Win32_ComputerSystem -ErrorAction SilentlyContinue
-    $hypervisor = $computerSystem.HypervisorPresent
-    Write-Output "host os build : $($operatingSystem.Version)"
-    Write-Output "hypervisor present : $(if ($null -eq $hypervisor) { 'not reported' } else { $hypervisor })"
-    $features = @{}
-    foreach ($feature in (Get-WindowsOptionalFeature -Online -ErrorAction SilentlyContinue)) {
-        $features[$feature.FeatureName] = $feature.State
-    }
-    if ($features.Count -eq 0) { Write-Output 'feature enumeration failed' }
-    foreach ($name in @('Containers', 'Containers-Optional', 'Microsoft-Hyper-V-Client', 'Microsoft-Hyper-V-All', 'VirtualMachinePlatform', 'WindowsHypervisorPlatform')) {
-        $state = if ($features.ContainsKey($name)) { $features[$name] } else { 'not found' }
-        Write-Output "feature $name : $state"
-    }
-    foreach ($name in @('Containers', 'Containers-Optional')) {
-        if ($features.ContainsKey($name) -and $features[$name] -eq 'Disabled') {
-            $result = Enable-WindowsOptionalFeature -Online -FeatureName $name -All -NoRestart -ErrorAction SilentlyContinue
-            Write-Output "enabled $name : success=$($result.Success) restartNeeded=$($result.RestartNeeded)"
-        }
-    }
-}
-
-$arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'amd64' }
+if ($env:PROCESSOR_ARCHITECTURE -ne 'ARM64') { throw "FAIL this script builds a windows/arm64 engine and needs an arm64 host" }
 
 if (Test-Engine) {
     Write-Output 'PASS docker is already installed'
 }
 else {
-    Probe-Containers
-    $goVersion = '1.27.1'
+    $mobyVersion = '29.8.1'
     $root = 'C:\vfox-docker'
     New-Item -ItemType Directory -Force -Path $root | Out-Null
-    Write-Output "Building docker from source for windows/$arch ..."
+    Write-Output 'Building docker from source for windows/arm64 ...'
 
+    $goMsi = "$env:TEMP\go.msi"
+    & curl.exe -fsSL -o $goMsi 'https://go.dev/dl/go1.27.1.windows-arm64.msi'
+    if ($LASTEXITCODE -ne 0) { throw "FAIL the Go download exited with code $LASTEXITCODE" }
+    & msiexec.exe /i $goMsi /quiet /norestart
+    if ($LASTEXITCODE -notin 0, 3010) { throw "FAIL the Go MSI install exited with code $LASTEXITCODE" }
+    Remove-Item $goMsi
     $env:GOPATH = Join-Path $root 'gopath'
     New-Item -ItemType Directory -Force -Path $env:GOPATH | Out-Null
-    $goZip = Join-Path $root "go$goVersion.windows-$arch.zip"
-    & curl.exe -fsSL -o $goZip "https://go.dev/dl/go$goVersion.windows-$arch.zip"
-    if ($LASTEXITCODE -ne 0) { throw "FAIL the Go download exited with code $LASTEXITCODE" }
-    Expand-Archive -Path $goZip -DestinationPath $root
-    $env:PATH = "$root\go\bin;$env:GOPATH\bin;$env:PATH"
+    $env:PATH = "C:\Program Files\Go\bin;$env:GOPATH\bin;$env:PATH"
 
     $moby = Join-Path $root 'moby'
-    git clone --depth 1 https://github.com/moby/moby.git $moby
+    git clone --depth 1 --branch "docker-v$mobyVersion" https://github.com/moby/moby.git $moby
     if ($LASTEXITCODE -ne 0) { throw "FAIL the moby clone exited with code $LASTEXITCODE" }
-    go install github.com/tc-hib/go-winres@latest
+    go install github.com/tc-hib/go-winres@v0.3.1
     if ($LASTEXITCODE -ne 0) { throw "FAIL the go-winres install exited with code $LASTEXITCODE" }
-    $env:DOCKERCLI_VERSION = '29.8.1'
+    $env:DOCKERCLI_VERSION = $mobyVersion
+    $env:VERSION = $mobyVersion
     Push-Location $moby
     try {
         & .\hack\make.ps1 -Client -Daemon
@@ -83,12 +62,8 @@ else {
 
     $dataRoot = Join-Path $root 'data'
     $log = Join-Path $root 'dockerd.log'
-    # Windows client SKUs (e.g. windows-11-arm) default to Hyper-V isolation,
-    # which needs a hypervisor feature this runner does not have. Process
-    # isolation only needs the "Containers" feature, which is enabled.
     $dockerdArgs = "--data-root `"$dataRoot`" --debug --exec-opt isolation=process"
     Start-Process -FilePath (Join-Path $bin 'dockerd.exe') -ArgumentList $dockerdArgs -RedirectStandardOutput $log -RedirectStandardError (Join-Path $root 'dockerd.err.log')
-    if ($env:GITHUB_ENV) { Add-Content -Path $env:GITHUB_ENV -Value "DOCKER_LOG=$log" }
     if (-not (Wait-Engine)) {
         if (Test-Path $log) { Get-Content $log -Tail 40 | ForEach-Object { "dockerd: $_" } }
         throw 'FAIL the docker engine never became ready'
@@ -96,7 +71,5 @@ else {
 }
 
 $info = ((& docker info --format '{{.OSType}}|{{.Architecture}}') -join '').Trim().ToLowerInvariant()
-$os, $rawArch = $info -split '\|'
-$engineArch = if ($rawArch -eq 'x86_64') { 'amd64' } else { $rawArch }
-if ($os -ne 'windows' -or $engineArch -ne $arch) { throw "FAIL the docker engine runs ${os}/${rawArch} containers, expected windows/$arch" }
-Write-Output "PASS the docker engine runs windows/$arch containers"
+if ($info -ne 'windows|arm64') { throw "FAIL the docker engine runs $info containers" }
+Write-Output 'PASS the docker engine runs windows/arm64 containers'

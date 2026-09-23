@@ -1,6 +1,6 @@
 package.path = "./lib/?.lua;" .. package.path
 
-local fixture, requests, mirror
+local fixture, requests, mirror, failures
 local originalGetenv = os.getenv
 os.getenv = function(name)
     if name == "FLUTTER_STORAGE_BASE_URL" then return mirror end
@@ -9,6 +9,10 @@ end
 package.preload.http = function()
     return { get = function(request)
         table.insert(requests, request.url)
+        if failures > 0 then
+            failures = failures - 1
+            return { status_code = 502 }, nil
+        end
         return { status_code = 200, body = "fixture" }, nil
     end }
 end
@@ -29,7 +33,7 @@ local function release(version, arch, channel, hash)
 end
 
 local function setup(osType, archType, storage)
-    mirror, requests = storage, {}
+    mirror, requests, failures = storage, {}, 0
     RUNTIME = { osType = osType, archType = archType }
     -- Both architectures share the same Flutter commit. Put x64 first to catch
     -- channel selection that relies on the upstream array's order.
@@ -121,6 +125,18 @@ tests[#tests + 1] = { "mirror is used for index and every architecture's archive
     local result = installed("3.44.0-x64", "3.44.0-x64", "x64")
     equal(requests[1], "https://mirror.example/flutter/flutter_infra_release/releases/releases_macos.json")
     equal(result.url, "https://mirror.example/flutter/flutter_infra_release/releases/sdk/3.44.0-x64.zip")
+end }
+tests[#tests + 1] = { "transient mirror failures are retried", function()
+    setup("darwin", "arm64")
+    failures, sleep = 2, function() end
+    equal(#PLUGIN:Available({}), 7)
+    equal(failures, 0)
+end }
+tests[#tests + 1] = { "a persistent mirror failure is reported", function()
+    setup("darwin", "arm64")
+    failures, sleep = 99, function() end
+    local _, err = pcall(function() PLUGIN:Available({}) end)
+    assert(err:find("status 502"), tostring(err))
 end }
 tests[#tests + 1] = { "legacy releases remain installable without inventing architecture variants", function()
     setup("darwin", "arm64")

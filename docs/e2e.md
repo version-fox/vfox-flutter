@@ -1,7 +1,7 @@
 # E2E
 
 The offline Lua hook tests (`tests/hooks_test.lua`) run in the **Test Plugin** workflow.
-The end-to-end suite runs in containers against real vfox on Linux and Windows; 
+The end-to-end suite runs in containers against real vfox on Linux and Windows;
 each `vfox` x `flavor` x `mirror` combination gets its own throwaway container.
 
 ## Ubuntu 26.04.1
@@ -35,6 +35,9 @@ ARCH=arm64 bash tests/e2e/linux/e2e.sh
 
 Windows containers cannot be emulated across architectures, so the ARM64 suite
 needs an ARM64 host (a Copilot+ PC or the `windows-11-arm` CI runner).
+
+The `windows-11-arm` runner has no Windows Hypervisor Platform feature,
+so Hyper-V isolation is unavailable; process isolation needs only the Containers feature.
 
 ### x64
 
