@@ -28,9 +28,24 @@ jobs:
 
   e2e-windows:
     if: github.repository == 'version-fox/vfox-flutter'
-    name: Windows container (amd64)
-    runs-on: windows-latest
-    timeout-minutes: 90
+    name: Windows container (${{ matrix.runs-on }})
+    strategy:
+      fail-fast: false
+      matrix:
+        runs-on: [windows-latest, windows-11-arm]
+    runs-on: ${{ matrix.runs-on }}
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
+      # TODO See https://github.com/actions/runner-images/issues/13729
+      - if: matrix.runs-on == 'windows-latest'
+        run: |
+          for ($i = 1; $i -le 18; $i++) {
+              docker info *> $null
+              if ($LASTEXITCODE -eq 0) { exit 0 }
+              Start-Sleep -Seconds 10
+          }
+          throw 'FAIL the docker daemon never became ready'
+      - if: matrix.runs-on == 'windows-11-arm'
+        run: pwsh -NoProfile -File tests/e2e/windows/install-docker.ps1
       - run: pwsh -NoProfile -File tests/e2e/windows/e2e.ps1

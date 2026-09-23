@@ -1,5 +1,13 @@
 local DEFAULT_STORAGE_BASE_URL = "https://storage.googleapis.com"
 
+function sleep(seconds)
+    if RUNTIME.osType == "windows" then
+        os.execute("timeout /t " .. seconds .. " >NUL")
+    else
+        os.execute("sleep " .. seconds)
+    end
+end
+
 function getStorageBaseUrl()
     local envUrl = os.getenv("FLUTTER_STORAGE_BASE_URL")
     if envUrl ~= nil and envUrl ~= "" then

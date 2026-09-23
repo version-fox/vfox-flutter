@@ -47,7 +47,7 @@ See [docs/ohos.md](docs/ohos.md) for details.
 
 See [docs/install-from-source.md](docs/install-from-source.md) for details.
 
-## Testing
+### Testing
 
 See [docs/e2e.md](docs/e2e.md) for details.
 

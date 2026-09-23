@@ -3,16 +3,27 @@ local json = require("json")
 local ohos = require("ohos")
 local source = require("source")
 
+local MAX_ATTEMPTS = 3
+local RETRY_DELAY = 5
+
 require("util")
+local function releases(type)
+    local resp, err
+    for attempt = 1, MAX_ATTEMPTS do
+        resp, err = http.get({ url = BASE_URL:format(type.osType) })
+        if resp ~= nil and resp.status_code == 200 then
+            return json.decode(resp.body)
+        end
+        if attempt < MAX_ATTEMPTS then
+            sleep(RETRY_DELAY)
+        end
+    end
+    error("get version failed: " .. tostring(err) .. " (status " .. tostring(resp and resp.status_code) .. ")")
+end
+
 function PLUGIN:Available(ctx)
     local type = getOsTypeAndArch()
-    local resp, err = http.get({
-        url = BASE_URL:format(type.osType)
-    })
-    if err ~= nil or resp.status_code ~= 200 then
-        error("get version failed: " .. tostring(err) .. " (status " .. tostring(resp and resp.status_code) .. ")")
-    end
-    local body = json.decode(resp.body)
+    local body = releases(type)
     local result = {}
     for _, info in ipairs(body.releases) do
         local version = info.version

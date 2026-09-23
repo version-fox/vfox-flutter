@@ -34,11 +34,11 @@ run_one() {
     local flavor="$2"
     local mirror="$3"
     local prefix="vfox $vfox, $flavor, mirror $mirror, $platform"
-    if [ "$mirror" = default ]; then
-        docker run --rm --platform "$platform" -e VFOX_VERSION="$vfox" -e FLAVOR="$flavor" "$image" 2>&1 | sed -e "s|^|[$prefix] |"
-    else
-        docker run --rm --platform "$platform" -e VFOX_VERSION="$vfox" -e FLAVOR="$flavor" -e FLUTTER_STORAGE_BASE_URL="$mirror" "$image" 2>&1 | sed -e "s|^|[$prefix] |"
+    local env=("-e" "VFOX_VERSION=$vfox" "-e" "FLAVOR=$flavor")
+    if [ "$mirror" != default ]; then
+        env+=("-e" "FLUTTER_STORAGE_BASE_URL=$mirror")
     fi
+    docker run --rm --platform "$platform" "${env[@]}" "$image" 2>&1 | sed -e "s|^|[$prefix] |"
 }
 
 for vfox in $foxes; do

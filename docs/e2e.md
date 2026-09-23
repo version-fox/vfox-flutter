@@ -1,9 +1,8 @@
 # E2E
 
 The offline Lua hook tests (`tests/hooks_test.lua`) run in the **Test Plugin** workflow.
-The end-to-end suite runs in containers against real vfox (`latest` and `main`) on Linux
-and Windows; each of the four `vfox` x `flavor` combinations gets its own throwaway
-container.
+The end-to-end suite runs in containers against real vfox on Linux and Windows;
+each `vfox` x `flavor` x `mirror` combination gets its own throwaway container.
 
 ## Ubuntu 26.04.1
 
@@ -32,7 +31,15 @@ docker run --privileged --rm tonistiigi/binfmt --install all
 ARCH=arm64 bash tests/e2e/linux/e2e.sh
 ```
 
-## Running on Windows 11 Pro
+## Windows 11 Pro
+
+Windows containers cannot be emulated across architectures, so the ARM64 suite
+needs an ARM64 host (a Copilot+ PC or the `windows-11-arm` CI runner).
+
+The `windows-11-arm` runner has no Windows Hypervisor Platform feature,
+so Hyper-V isolation is unavailable; process isolation needs only the Containers feature.
+
+### x64
 
 1. Execute in Windows PowerShell 5.1,
 
@@ -61,5 +68,22 @@ Invoke-WebRequest -UseBasicParsing `
 ```powershell
 git clone git@github.com:version-fox/vfox-flutter.git
 cd ./vfox-flutter/
+pwsh -NoProfile -File .\tests\e2e\windows\e2e.ps1
+```
+
+### arm64
+
+1. Execute in Windows PowerShell 5.1,
+
+```powershell
+winget install --id Microsoft.PowerShell --source winget --exact
+```
+
+2. Execute in PowerShell 7,
+
+```powershell
+git clone git@github.com:version-fox/vfox-flutter.git
+cd ./vfox-flutter/
+pwsh -NoProfile -File .\tests\e2e\windows\install-docker.ps1
 pwsh -NoProfile -File .\tests\e2e\windows\e2e.ps1
 ```

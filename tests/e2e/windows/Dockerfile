@@ -1,5 +1,6 @@
 # escape=`
-FROM mcr.microsoft.com/windows/servercore:ltsc2025-KB5122871
+ARG BASE_IMAGE=mcr.microsoft.com/windows/servercore:ltsc2025-KB5122871-amd64
+FROM ${BASE_IMAGE}
 
 SHELL ["powershell", "-NoProfile", "-Command"]
 
