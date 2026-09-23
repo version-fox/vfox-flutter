@@ -34,7 +34,7 @@ run_one() {
     local flavor="$2"
     local mirror="$3"
     local prefix="vfox $vfox, $flavor, mirror $mirror, $platform"
-    local env=("-e" "VFOX_VERSION=$vfox" "-e" "FLAVOR=$flavor" "-e" "GITHUB_TOKEN=${GITHUB_TOKEN:-}")
+    local env=("-e" "VFOX_VERSION=$vfox" "-e" "FLAVOR=$flavor")
     if [ "$mirror" != default ]; then
         env+=("-e" "FLUTTER_STORAGE_BASE_URL=$mirror")
     fi

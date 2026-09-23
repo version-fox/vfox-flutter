@@ -17,11 +17,11 @@ end
 local function releases()
     local resp, err = http.get({ url = RELEASES_URL:format(REPO) })
     if err ~= nil or resp.status_code ~= 200 then
-        return nil
+        return nil, err or ("HTTP " .. tostring(resp.status_code))
     end
     local body = json.decode(resp.body)
     if type(body) ~= "table" then
-        return nil
+        return nil, "the releases response is not a JSON array"
     end
     return body
 end
@@ -44,17 +44,22 @@ end
 
 function M.checkout(version, requestedArch)
     if requestedArch ~= nil then
-        return nil
+        error("flutter " .. version .. " has no architecture variants")
     end
     local commit
-    for _, info in ipairs(releases() or {}) do
+    local body, err = releases()
+    if body == nil then
+        error("OpenHarmony releases are unavailable from " .. RELEASES_URL:format(REPO)
+            .. ": " .. tostring(err))
+    end
+    for _, info in ipairs(body) do
         if info.tag_name == version then
             commit = info.target_commitish
             break
         end
     end
     if commit == nil or commit == "" then
-        return nil
+        error("flutter " .. version .. " is not an OpenHarmony release")
     end
     local dir = git.workDir(version)
     if dir == nil then
