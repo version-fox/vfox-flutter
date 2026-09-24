@@ -4,6 +4,7 @@ FROM ${BASE_IMAGE}
 
 SHELL ["powershell", "-NoProfile", "-Command"]
 
+COPY tests/e2e/windows/lib.ps1 C:\lib.ps1
 COPY tests/e2e/windows/bootstrap-tools.ps1 C:\bootstrap-tools.ps1
 RUN powershell -NoProfile -ExecutionPolicy Bypass -File 'C:\bootstrap-tools.ps1'
 

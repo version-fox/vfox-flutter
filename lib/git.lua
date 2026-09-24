@@ -87,7 +87,10 @@ function M.resetDir(dir)
 end
 
 function M.init(root)
-    return exec("git init -q " .. quote(root))
+    if not exec("git init -q " .. quote(root)) then
+        return false
+    end
+    return git(root, "config core.longpaths true")
 end
 
 function M.fetch(root, remote, ref)

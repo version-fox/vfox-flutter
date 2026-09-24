@@ -1,7 +1,16 @@
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $true
+. "$PSScriptRoot\lib.ps1"
 
 $VfoxVersion = if ($env:VFOX_VERSION) { $env:VFOX_VERSION } else { 'latest' }
+
+$slot = if ($env:VFOX_E2E_SLOT) { $env:VFOX_E2E_SLOT } else { 'default' }
+$slotRoot = Join-Path $env:USERPROFILE "vfox-e2e-runs\$slot"
+New-Item -ItemType Directory -Force -Path (Join-Path $slotRoot 'tmp') | Out-Null
+$env:USERPROFILE = $slotRoot
+$env:VFOX_HOME = Join-Path $slotRoot '.vfox'
+$env:TEMP = Join-Path $slotRoot 'tmp'
+$env:TMP = $env:TEMP
 
 $RepoRoot = (Resolve-Path "$PSScriptRoot\..\..\..").Path
 $WorkDir = "$env:TEMP\vfox-flutter-e2e"
@@ -10,12 +19,16 @@ $VfoxExe = "$WorkDir\vfox.exe"
 $PluginZip = "$WorkDir\flutter.zip"
 $env:PATH = "$WorkDir;$env:PATH"
 
+$CurlRetry = @('--retry', '3', '--retry-delay', '5', '--retry-all-errors')
+
 function Install-VfoxRelease {
-    $tag = ((& curl.exe -fsSLI -o NUL -w '%{url_effective}' 'https://github.com/version-fox/vfox/releases/latest') -split '/tag/')[-1].Trim()
+    $PSNativeCommandUseErrorActionPreference = $false
+    $tag = ((& curl.exe @CurlRetry -fsSLI -o NUL -w '%{url_effective}' 'https://github.com/version-fox/vfox/releases/latest') -split '/tag/')[-1].Trim()
+    $PSNativeCommandUseErrorActionPreference = $true
     $vfoxArch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'aarch64' } else { 'x86_64' }
     $zip = "$WorkDir\vfox.zip"
-    & curl.exe -fsSL -o $zip "https://github.com/version-fox/vfox/releases/download/$tag/vfox_$($tag.TrimStart('v'))_windows_$vfoxArch.zip"
-    tar -xf $zip -C $WorkDir
+    Invoke-Native { & curl.exe @CurlRetry -fsSL -o $zip "https://github.com/version-fox/vfox/releases/download/$tag/vfox_$($tag.TrimStart('v'))_windows_$vfoxArch.zip" } 'the vfox release download'
+    Invoke-Native { tar -xf $zip -C $WorkDir } 'extracting the vfox release'
     Remove-Item $zip
     Copy-Item -Path (Get-ChildItem -Path $WorkDir -Recurse -Filter 'vfox.exe') -Destination $VfoxExe
 }
@@ -23,11 +36,17 @@ function Install-VfoxRelease {
 function Install-VfoxMain {
     $goArch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'amd64' }
     $goMsi = "$env:TEMP\go.msi"
-    & curl.exe -fsSL -o $goMsi "https://go.dev/dl/go1.27.1.windows-$goArch.msi"
-    Start-Process msiexec.exe -Wait -ArgumentList '/i', "`"$goMsi`"", '/quiet', '/norestart'
+    Invoke-Native { & curl.exe @CurlRetry -fsSL -o $goMsi "https://go.dev/dl/go1.27.1.windows-$goArch.msi" } 'the Go download'
+    $goInstall = $null
+    for ($attempt = 1; $attempt -le 5; $attempt++) {
+        $goInstall = Start-Process msiexec.exe -Wait -PassThru -ArgumentList '/i', "`"$goMsi`"", '/quiet', '/norestart'
+        if ($goInstall.ExitCode -in 0, 3010, 1937) { break }
+        Start-Sleep -Seconds 15
+    }
+    if ($goInstall.ExitCode -notin 0, 3010, 1937) { throw "FAIL the Go MSI install exited with code $($goInstall.ExitCode)" }
     Remove-Item $goMsi
     $src = "$WorkDir\vfox-src"
-    git clone --depth 1 https://github.com/version-fox/vfox $src
+    Invoke-Native { git clone --depth 1 https://github.com/version-fox/vfox $src } 'cloning vfox from main'
     $buildScript = @"
 go build -C "$src" -trimpath -o "$VfoxExe" .
 "@
@@ -37,17 +56,5 @@ go build -C "$src" -trimpath -o "$VfoxExe" .
 
 if ($VfoxVersion -eq 'main') { Install-VfoxMain } else { Install-VfoxRelease }
 
-tar -a -cf $PluginZip -C $RepoRoot metadata.lua hooks lib
-if ($LASTEXITCODE -ne 0) { throw "FAIL tar packaging exited with code $LASTEXITCODE" }
-vfox add flutter --source $PluginZip
-if ($LASTEXITCODE -ne 0) { throw "FAIL vfox add flutter --source exited with code $LASTEXITCODE" }
-
-$ProfileDir = Split-Path -Parent $PROFILE
-if (-not (Test-Path $ProfileDir)) {
-    New-Item -ItemType Directory -Force -Path $ProfileDir | Out-Null
-}
-if (-not (Test-Path $PROFILE)) {
-    New-Item -ItemType File -Force -Path $PROFILE | Out-Null
-}
-Add-Content -Path $PROFILE -Value "`$env:PATH = `"$WorkDir;`$env:PATH`""
-Add-Content -Path $PROFILE -Value 'Invoke-Expression "$(vfox activate pwsh)"'
+Invoke-Native { tar -a -cf $PluginZip -C $RepoRoot metadata.lua hooks lib } 'tar packaging'
+Invoke-Native { vfox add flutter --source $PluginZip } 'vfox add flutter --source'

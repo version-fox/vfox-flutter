@@ -1,5 +1,6 @@
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $true
+. "$PSScriptRoot\lib.ps1"
 
 function Test-Engine {
     if (-not (Get-Command docker -ErrorAction SilentlyContinue)) { return $false }
@@ -29,21 +30,12 @@ else {
     New-Item -ItemType Directory -Force -Path $root | Out-Null
     Write-Output 'Building docker from source for windows/arm64 ...'
 
-    $goMsi = "$env:TEMP\go.msi"
-    & curl.exe -fsSL -o $goMsi 'https://go.dev/dl/go1.27.1.windows-arm64.msi'
-    if ($LASTEXITCODE -ne 0) { throw "FAIL the Go download exited with code $LASTEXITCODE" }
-    & msiexec.exe /i $goMsi /quiet /norestart
-    if ($LASTEXITCODE -notin 0, 3010) { throw "FAIL the Go MSI install exited with code $LASTEXITCODE" }
-    Remove-Item $goMsi
+    if (-not (Get-Command go -ErrorAction SilentlyContinue)) { throw 'FAIL go is not on the PATH' }
     $env:GOPATH = Join-Path $root 'gopath'
-    New-Item -ItemType Directory -Force -Path $env:GOPATH | Out-Null
-    $env:PATH = "C:\Program Files\Go\bin;$env:GOPATH\bin;$env:PATH"
 
     $moby = Join-Path $root 'moby'
-    git clone --depth 1 --branch "docker-v$mobyVersion" https://github.com/moby/moby.git $moby
-    if ($LASTEXITCODE -ne 0) { throw "FAIL the moby clone exited with code $LASTEXITCODE" }
-    go install github.com/tc-hib/go-winres@v0.3.1
-    if ($LASTEXITCODE -ne 0) { throw "FAIL the go-winres install exited with code $LASTEXITCODE" }
+    Invoke-Native { git clone --depth 1 --branch "docker-v$mobyVersion" https://github.com/moby/moby.git $moby } 'the moby clone'
+    Invoke-Native { go install github.com/tc-hib/go-winres@v0.3.1 } 'the go-winres install'
     $env:DOCKERCLI_VERSION = $mobyVersion
     $env:VERSION = $mobyVersion
     Push-Location $moby

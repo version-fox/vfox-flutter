@@ -82,8 +82,10 @@ winget install --id Microsoft.PowerShell --source winget --exact
 2. Execute in PowerShell 7,
 
 ```powershell
+winget install --id Git.Git --source winget --exact
+winget install --id GoLang.Go --source winget --exact
 git clone git@github.com:version-fox/vfox-flutter.git
 cd ./vfox-flutter/
-pwsh -NoProfile -File .\tests\e2e\windows\install-docker.ps1
+pwsh -NoProfile -File .\tests\e2e\windows\install-docker-arm64.ps1
 pwsh -NoProfile -File .\tests\e2e\windows\e2e.ps1
 ```
