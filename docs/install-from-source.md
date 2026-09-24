@@ -10,6 +10,7 @@ git clone --depth 1 https://github.com/version-fox/vfox-flutter.git
 cd ./vfox-flutter/
 zip -qr ./flutter.zip metadata.lua hooks lib
 vfox add flutter --source ./flutter.zip
+rm ./flutter.zip
 ```
 
 You can verify this using the following command,
@@ -31,6 +32,7 @@ git clone --depth 1 https://github.com/version-fox/vfox-flutter.git
 cd ./vfox-flutter/
 tar -a -cf ./flutter.zip metadata.lua hooks lib
 vfox add flutter --source ./flutter.zip
+Remove-Item ./flutter.zip
 ```
 
 You can verify this using the following command,

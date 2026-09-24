@@ -21,6 +21,31 @@ assert_contains() {
     exit 1
 }
 
+retry() {
+    local label="$1"
+    shift
+    local output=""
+    local code=1
+    set +e
+    for attempt in 1 2 3; do
+        output="$("$@" 2>&1)"
+        code=$?
+        set -e
+        if [ "$code" -eq 0 ]; then
+            printf '%s' "$output"
+            return 0
+        fi
+        if [ "$attempt" -lt 3 ]; then
+            echo "retrying ${label}, attempt ${attempt} exited ${code}" >&2
+            sleep $((10 * attempt))
+            set +e
+        fi
+    done
+    set -e
+    printf '%s' "$output"
+    return "$code"
+}
+
 flavor="${FLAVOR:?missing flavor}"
 mirror="${FLUTTER_STORAGE_BASE_URL:-default}"
 if [ "$flavor" = official ]; then
@@ -35,19 +60,12 @@ fi
 echo "=== vfox ${VFOX_VERSION:-latest}, flutter $version, $flavor, mirror $mirror, $(uname -m) ==="
 if [ "$flavor" = official ] && [ "$mirror" != default ]; then
     mirror_index="${mirror%/}/flutter_infra_release/releases/releases_linux.json"
-    mirror_ok=0
-    for attempt in 1 2 3; do
-        if curl -fsSL --max-time 20 -o /dev/null "$mirror_index"; then
-            mirror_ok=1
-            break
-        fi
-        sleep 10
-    done
-    if [ "$mirror_ok" -ne 1 ]; then
+    if retry "mirror $mirror_index" curl -fsSL --max-time 20 -o /dev/null "$mirror_index" >/dev/null; then
+        echo "PASS mirror $mirror serves the releases index"
+    else
         echo "FAIL mirror $mirror is unreachable ($mirror_index)" >&2
         exit 1
     fi
-    echo "PASS mirror $mirror serves the releases index"
 fi
 source "$here/setup.sh"
 if [ "$flavor" = official ]; then
@@ -82,11 +100,17 @@ else
     fi
     echo 'PASS the OpenHarmony SDK is a git checkout with its engine pins tracked'
 fi
-if ! curl -fsSL --max-time 20 -o /dev/null 'https://pub.dev/api/packages/args'; then
+if ! retry 'pub.dev' curl -fsSL --max-time 20 -o /dev/null 'https://pub.dev/api/packages/args' >/dev/null; then
     echo 'FAIL pub.dev is unreachable, the Flutter tool cannot bootstrap' >&2
     exit 1
 fi
-dart="$(dart --version)"
-flutter="$(flutter --version --no-version-check)"
+if ! dart="$(retry 'dart --version' dart --version)"; then
+    echo 'FAIL dart --version did not run' >&2
+    exit 1
+fi
+if ! flutter="$(retry 'flutter --version' flutter --version --no-version-check)"; then
+    echo 'FAIL flutter --version did not run' >&2
+    exit 1
+fi
 assert_contains "$flutter" "$(git -C "$sdk" rev-parse HEAD | cut -c1-10)" 'flutter --version revision'
 assert_contains "$dart" "$(echo "$flutter" | awk '/Tools/ { print $4 }')" 'dart --version'

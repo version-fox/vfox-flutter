@@ -32,3 +32,19 @@ EOF
 
 source /etc/profile.d/myenvvars.sh
 ```
+
+## Windows 11
+
+For PowerShell 7,
+
+1. You can make the setting take effect temporarily in the current shell using the following command.
+
+```powershell
+$env:FLUTTER_STORAGE_BASE_URL = "https://storage.flutter-io.cn"
+```
+
+2. To ensure that environment variables always take effect, you can perform the following steps:
+
+```powershell
+[Environment]::SetEnvironmentVariable('FLUTTER_STORAGE_BASE_URL', 'https://storage.flutter-io.cn', 'Machine')
+```
