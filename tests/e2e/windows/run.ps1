@@ -1,5 +1,6 @@
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $true
+. "$PSScriptRoot\lib.ps1"
 
 $vfox = if ($env:VFOX_VERSION) { $env:VFOX_VERSION } else { 'latest' }
 $flavor = if ($env:FLAVOR) { $env:FLAVOR } else { throw 'FAIL FLAVOR is not set' }
@@ -43,7 +44,13 @@ if ($flavor -eq 'official') {
     if ($bogusOutput -notmatch [regex]::Escape('invalid.example.invalid')) { throw ("FAIL bogus mirror error is missing invalid.example.invalid`n--- actual ---`n{0}" -f $bogusOutput) }
     Write-Output 'PASS bogus mirror error contains invalid.example.invalid'
 }
-& pwsh -File "$PSScriptRoot\install.ps1" -Version $version
-if ($LASTEXITCODE -ne 0) { throw "FAIL install.ps1 (flutter $version) exited with code $LASTEXITCODE" }
-& pwsh -File "$PSScriptRoot\verify.ps1" -Flavor $flavor
-if ($LASTEXITCODE -ne 0) { throw "FAIL verify.ps1 ($flavor) exited with code $LASTEXITCODE" }
+Invoke-Native { & pwsh -NoProfile -File "$PSScriptRoot\install.ps1" -Version $version } "install.ps1 (flutter $version)"
+
+$PSNativeCommandUseErrorActionPreference = $false
+$activation = @(vfox activate pwsh) -join "`r`n"
+$activationCode = $LASTEXITCODE
+$PSNativeCommandUseErrorActionPreference = $true
+if ($activationCode -ne 0) { throw "FAIL vfox activate pwsh exited with code $activationCode" }
+Invoke-Expression $activation
+
+Invoke-Native { & pwsh -NoProfile -File "$PSScriptRoot\verify.ps1" -Flavor $flavor } "verify.ps1 ($flavor)"

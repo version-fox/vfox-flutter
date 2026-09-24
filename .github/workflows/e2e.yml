@@ -46,6 +46,13 @@ jobs:
               Start-Sleep -Seconds 10
           }
           throw 'FAIL the docker daemon never became ready'
+      # TODO For compiling moby only.
+      # Because https://github.com/actions/runner-images/blob/win11-arm64/20260920.174/images/windows/Windows11-Arm64-Readme.md is still using `Go 1.24.13`.
       - if: matrix.runs-on == 'windows-11-arm'
-        run: pwsh -NoProfile -File tests/e2e/windows/install-docker.ps1
+        uses: actions/setup-go@v7
+        with:
+          go-version: 1.26.8
+          cache: false
+      - if: matrix.runs-on == 'windows-11-arm'
+        run: pwsh -NoProfile -File tests/e2e/windows/install-docker-arm64.ps1
       - run: pwsh -NoProfile -File tests/e2e/windows/e2e.ps1
