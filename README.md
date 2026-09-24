@@ -15,7 +15,7 @@ if you install the Flutter SDK via the current vfox plugin,
 there is no need to separately install the Dart SDK using the vfox plugin from 
 https://github.com/version-fox/vfox-dart .
 
-### Example: Ubuntu 26.04
+### Example: Ubuntu 26.04.1
 
 ```bash
 vfox add flutter
@@ -27,8 +27,8 @@ vfox use --global flutter@3.47.4
 You can verify this using the following command:
 
 ```bash
-dart --version
 flutter --version --no-version-check
+dart --version
 ```
 
 ## Architecture selection
