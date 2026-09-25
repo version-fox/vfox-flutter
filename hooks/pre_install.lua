@@ -1,5 +1,6 @@
 local http = require("http")
 local json = require("json")
+local manifest = require("manifest")
 local ohos = require("ohos")
 local source = require("source")
 
@@ -61,6 +62,9 @@ function PLUGIN:PostInstall(ctx)
     local sdk = ctx.sdkInfo and ctx.sdkInfo[PLUGIN.name]
     if sdk == nil then
         return
+    end
+    if sdk.path ~= nil and sdk.path ~= "" then
+        pcall(manifest.write, sdk.path, sdk)
     end
     if ohos.isOhosVersion(sdk.version) then
         ohos.clean(sdk.version)

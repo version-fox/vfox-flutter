@@ -100,6 +100,84 @@ else
     fi
     echo 'PASS the OpenHarmony SDK is a git checkout with its engine pins tracked'
 fi
+
+# --- in-place `flutter upgrade` drift detection ---------------------------
+manifest="$sdk/.vfox-manifest"
+if [ ! -f "$manifest" ]; then
+    echo 'FAIL the SDK has no .vfox-manifest, so its installed version cannot be anchored' >&2
+    exit 1
+fi
+echo 'PASS the SDK carries a .vfox-manifest'
+
+installed_head="$(git -C "$sdk" rev-parse HEAD)"
+anchor="$(sed -n 's/.*"expected_head"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$manifest")"
+if [ -z "$anchor" ]; then
+    echo 'FAIL the .vfox-manifest has no expected_head' >&2
+    exit 1
+fi
+if [ "$anchor" != "$installed_head" ]; then
+    echo "FAIL the .vfox-manifest anchor $anchor does not match the installed git HEAD $installed_head" >&2
+    exit 1
+fi
+echo 'PASS the .vfox-manifest anchor matches the installed git HEAD'
+
+set +e
+clean_output="$(vfox use --global flutter@"$version" 2>&1)"
+clean_code=$?
+set -e
+if [ "$clean_code" -ne 0 ]; then
+    echo "FAIL vfox use exited with code ${clean_code}" >&2
+    exit 1
+fi
+if echo "$clean_output" | grep -qF 'has drifted'; then
+    echo 'FAIL a freshly installed SDK reports drift' >&2
+    echo "--- actual ---" >&2
+    echo "$clean_output" >&2
+    exit 1
+fi
+echo 'PASS a freshly installed SDK reports no drift'
+
+if ! GIT_AUTHOR_NAME=e2e GIT_AUTHOR_EMAIL=e2e@vfox.flutter \
+    GIT_COMMITTER_NAME=e2e GIT_COMMITTER_EMAIL=e2e@vfox.flutter \
+    git -C "$sdk" commit --allow-empty -q -m 'simulated flutter upgrade'; then
+    echo 'FAIL failed to record a simulated flutter upgrade commit' >&2
+    exit 1
+fi
+drifted_head="$(git -C "$sdk" rev-parse HEAD)"
+
+set +e
+drift_output="$(vfox use --global flutter@"$version" 2>&1)"
+drift_code=$?
+set -e
+if [ "$drift_code" -ne 0 ]; then
+    echo "FAIL vfox use exited with code ${drift_code}" >&2
+    exit 1
+fi
+assert_contains "$drift_output" 'has drifted from the version vfox installed' 'drift warning'
+assert_contains "$drift_output" "$anchor" 'drift warning expected head'
+assert_contains "$drift_output" "$drifted_head" 'drift warning current head'
+assert_contains "$drift_output" "vfox uninstall flutter@$version" 'drift warning restore command'
+assert_contains "$drift_output" "vfox install  flutter@$version" 'drift warning restore command'
+assert_contains "$drift_output" "vfox use      flutter@$version" 'drift warning restore command'
+assert_contains "$drift_output" 'vfox install flutter@<new-version>' 'drift warning upgrade command'
+
+git -C "$sdk" reset -q --hard "$anchor"
+set +e
+restored_output="$(vfox use --global flutter@"$version" 2>&1)"
+restored_code=$?
+set -e
+if [ "$restored_code" -ne 0 ]; then
+    echo "FAIL vfox use exited with code ${restored_code}" >&2
+    exit 1
+fi
+if echo "$restored_output" | grep -qF 'has drifted'; then
+    echo 'FAIL a restored SDK still reports drift' >&2
+    echo "--- actual ---" >&2
+    echo "$restored_output" >&2
+    exit 1
+fi
+echo 'PASS a restored SDK reports no drift'
+
 if ! retry 'pub.dev' curl -fsSL --max-time 20 -o /dev/null 'https://pub.dev/api/packages/args' >/dev/null; then
     echo 'FAIL pub.dev is unreachable, the Flutter tool cannot bootstrap' >&2
     exit 1

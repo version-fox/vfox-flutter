@@ -53,4 +53,4 @@ $PSNativeCommandUseErrorActionPreference = $true
 if ($activationCode -ne 0) { throw "FAIL vfox activate pwsh exited with code $activationCode" }
 Invoke-Expression $activation
 
-Invoke-Native { & pwsh -NoProfile -File "$PSScriptRoot\verify.ps1" -Flavor $flavor } "verify.ps1 ($flavor)"
+Invoke-Native { & pwsh -NoProfile -File "$PSScriptRoot\verify.ps1" -Flavor $flavor -Version $version } "verify.ps1 ($flavor)"

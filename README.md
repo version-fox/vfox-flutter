@@ -43,7 +43,13 @@ See [docs/mirror.md](docs/mirror.md) for details.
 
 See [docs/ohos.md](docs/ohos.md) for details.
 
-## Install from source
+## FAQ
+
+### About `flutter upgrade`
+
+See [docs/flutter-upgrade.md](docs/flutter-upgrade.md) for details.
+
+### Install from source
 
 See [docs/install-from-source.md](docs/install-from-source.md) for details.
 
