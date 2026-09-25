@@ -24,4 +24,5 @@ NOTE:
 PLUGIN.minRuntimeVersion = "0.3.0"
 -- Some things that need user to be attention!
 PLUGIN.notes = {
+    "Do NOT run `flutter upgrade` (or `flutter downgrade`, `flutter channel`, or any in-place git operation) inside a vfox-managed Flutter SDK. It mutates the SDK in place and vfox will silently hand you the wrong version on the next `vfox use`. Change versions with `vfox install flutter@<version>` and `vfox use flutter@<version>`. This plugin detects such drift and prints a warning with the restore commands on the next `vfox use`.",
 }
