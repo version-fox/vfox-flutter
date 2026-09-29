@@ -1,66 +1,70 @@
 #!/usr/bin/env bash
-set -euo pipefail
+# Host-side matrix runner: build the image once, then fan out one container
+# per (vfox version x flavor x mirror) combination, at most $max_jobs at a
+# time. Logs are prefixed so parallel runs stay readable.
+set -o errexit -o nounset -o pipefail
 
-here="$(dirname "${BASH_SOURCE[0]}")"
-repo="$(cd "$here/../../.." && pwd)"
-
-host_arch="$(uname -m)"
-case "$host_arch" in
-    x86_64) host_arch="amd64" ;;
-    aarch64|arm64) host_arch="arm64" ;;
-esac
-arch="${ARCH:-$host_arch}"
-platform="linux/$arch"
-image="vfox-flutter-e2e:linux-$arch"
-
-docker build --pull --platform "$platform" -f "$here/Dockerfile" -t "$image" "$repo"
-
-foxes="${VFOX_VERSION:-latest main}"
-default_flavours="official ohos"
-default_mirrors="default https://storage.flutter-io.cn"
-if [ "$arch" = arm64 ]; then
-    default_flavours="official"
-    default_mirrors="default"
-fi
-flavours="${FLAVOR:-$default_flavours}"
-mirrors="${MIRROR:-$default_mirrors}"
-mirror_explicit="${MIRROR:-}"
-
-max_jobs=3
-failed=0
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib.sh
+source "$here/lib.sh"
+# shellcheck source=config.sh
+source "$here/config.sh"
 
 run_one() {
-    local vfox="$1"
-    local flavor="$2"
-    local mirror="$3"
+    local image="$1"
+    local platform="$2"
+    local vfox="$3"
+    local flavor="$4"
+    local mirror="$5"
     local prefix="vfox $vfox, $flavor, mirror $mirror, $platform"
-    local env=("-e" "VFOX_VERSION=$vfox" "-e" "FLAVOR=$flavor")
-    if [ "$mirror" != default ]; then
-        env+=("-e" "FLUTTER_STORAGE_BASE_URL=$mirror")
+    local env=(--env "VFOX_VERSION=$vfox" --env "FLAVOR=$flavor")
+    if [[ "$mirror" != "default" ]]; then
+        env+=(--env "FLUTTER_STORAGE_BASE_URL=$mirror")
     fi
-    docker run --rm --platform "$platform" "${env[@]}" "$image" 2>&1 | sed -e "s|^|[$prefix] |"
+    docker run --rm --platform "$platform" "${env[@]}" "$image" 2>&1 | sed --expression "s|^|[$prefix] |"
 }
 
-for vfox in $foxes; do
-    for flavor in $flavours; do
-        for mirror in $mirrors; do
-            if [ -z "$mirror_explicit" ] && [ "$mirror" != default ] && [ "$vfox" != latest ]; then
-                continue
-            fi
-            run_one "$vfox" "$flavor" "$mirror" &
-            while [ "$(jobs -p | wc -l)" -ge "$max_jobs" ]; do
-                if ! wait -n; then
-                    failed=1
+main() {
+    local repo arch platform image
+    repo="$(cd "$here/../../.." && pwd)"
+    arch="$(normalize_arch "${ARCH:-$(uname --machine)}")"
+    platform="linux/$arch"
+    image="vfox-flutter-e2e:linux-$arch"
+
+    docker build --pull --platform "$platform" --file "$here/Dockerfile" --tag "$image" "$repo"
+
+    # Space-separated env lists (e.g. FLAVOR="official ohos") are split
+    # into arrays up front, so the loops below need no word splitting.
+    # (read is a bash builtin with no long-option form for -r/-a.)
+    local -a foxes flavours mirrors
+    read -ra foxes <<< "${VFOX_VERSION:-latest main}"
+    read -ra flavours <<< "${FLAVOR:-$(default_flavours "$arch")}"
+    read -ra mirrors <<< "${MIRROR:-$(default_mirrors "$arch")}"
+    local mirror_explicit="${MIRROR:-}"
+    local max_jobs="${E2E_MAX_JOBS:-3}"
+    local failed=0
+
+    for vfox in "${foxes[@]}"; do
+        for flavor in "${flavours[@]}"; do
+            for mirror in "${mirrors[@]}"; do
+                # The mirror matrix only runs against latest vfox unless the
+                # caller explicitly pins MIRROR, to keep CI time bounded.
+                if [[ -z "$mirror_explicit" && "$mirror" != "default" && "$vfox" != "latest" ]]; then
+                    continue
                 fi
+                run_one "$image" "$platform" "$vfox" "$flavor" "$mirror" &
+                while [[ "$(jobs -p | wc --lines)" -ge "$max_jobs" ]]; do
+                    wait -n || failed=1
+                done
             done
         done
     done
-done
 
-while [ "$(jobs -p | wc -l)" -gt 0 ]; do
-    if ! wait -n; then
-        failed=1
-    fi
-done
+    while [[ "$(jobs -p | wc --lines)" -gt 0 ]]; do
+        wait -n || failed=1
+    done
 
-exit "$failed"
+    return "$failed"
+}
+
+main "$@"
