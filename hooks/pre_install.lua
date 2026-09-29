@@ -16,7 +16,7 @@ function PLUGIN:PreInstall(ctx)
     local channelKey
     if arg == "beta" or arg == "dev" or arg == "stable" then
         local resp, err = http.get({
-            url = BASE_URL:format(platform.osType)
+            url = getReleasesUrl(platform.osType)
         })
         if err ~= nil or resp.status_code ~= 200 then
             error("get version failed: " .. tostring(err) .. " (status " .. tostring(resp and resp.status_code) .. ")")

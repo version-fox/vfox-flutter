@@ -48,3 +48,11 @@ $env:FLUTTER_STORAGE_BASE_URL = "https://storage.flutter-io.cn"
 ```powershell
 [Environment]::SetEnvironmentVariable('FLUTTER_STORAGE_BASE_URL', 'https://storage.flutter-io.cn', 'Machine')
 ```
+
+## GitHub mirror for source installs
+
+On Linux ARM64 and Windows ARM64,
+the plugin installs Flutter from git source instead of a prebuilt archive.
+If `https://github.com` sends no data within 10s,
+the plugin automatically falls back to `https://gh-proxy.org/`.
+Once the transfer starts it is never interrupted.

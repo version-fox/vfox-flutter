@@ -16,7 +16,9 @@ function getStorageBaseUrl()
     return DEFAULT_STORAGE_BASE_URL
 end
 
-BASE_URL = getStorageBaseUrl() .. "/flutter_infra_release/releases/releases_%s.json"
+function getReleasesUrl(osType)
+    return getStorageBaseUrl() .. "/flutter_infra_release/releases/releases_" .. osType .. ".json"
+end
 
 
 function getOsTypeAndArch()

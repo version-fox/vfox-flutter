@@ -53,5 +53,9 @@ run on Windows ARM64.
 - **No checksum is verified.** Git history is the integrity check.
 - **No `-arm64` variants for legacy releases.** Versions without architecture
   metadata (such as `2.10.0`) keep their existing x64-only behavior.
-- **Mirrors don't apply.** `FLUTTER_STORAGE_BASE_URL` (see `mirror.md`) only
-  affects archive downloads; source installs clone from GitHub.
+- **Mirrors don't apply to archive downloads.** `FLUTTER_STORAGE_BASE_URL`
+  (see `mirror.md`) only affects archive downloads; source installs clone
+  from GitHub. If GitHub sends no data within 10s, the plugin
+  automatically falls back to the `https://gh-proxy.org/` mirror and shows
+  a countdown while probing. Once the transfer starts it is never
+  interrupted.
