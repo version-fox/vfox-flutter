@@ -2,11 +2,15 @@ local http = require("http")
 local json = require("json")
 local git = require("git")
 
+require("util")
+
 local MARKER = "-ohos-"
 local REPO = "CPF-Flutter/flutter_flutter"
 local RELEASES_URL = "https://gitcode.com/api/v5/repos/%s/releases?per_page=100"
 local CLONE_URL = "https://gitcode.com/%s.git"
 local NOTE = "OpenHarmony"
+local RELEASES_ATTEMPTS = 3
+local RETRY_DELAY = 10
 
 local M = {}
 
@@ -15,15 +19,23 @@ function M.isOhosVersion(version)
 end
 
 local function releases()
-    local resp, err = http.get({ url = RELEASES_URL:format(REPO) })
-    if err ~= nil or resp.status_code ~= 200 then
-        return nil, err or ("HTTP " .. tostring(resp.status_code))
+    local lastErr = "unknown error"
+    for attempt = 1, RELEASES_ATTEMPTS do
+        local resp, err = http.get({ url = RELEASES_URL:format(REPO) })
+        if err == nil and resp ~= nil and resp.status_code == 200 then
+            local body = json.decode(resp.body)
+            if type(body) == "table" then
+                return body
+            end
+            lastErr = "the releases response is not a JSON array"
+        else
+            lastErr = err or ("HTTP " .. tostring(resp and resp.status_code))
+        end
+        if attempt < RELEASES_ATTEMPTS then
+            sleep(RETRY_DELAY)
+        end
     end
-    local body = json.decode(resp.body)
-    if type(body) ~= "table" then
-        return nil, "the releases response is not a JSON array"
-    end
-    return body
+    return nil, lastErr
 end
 
 function M.list()

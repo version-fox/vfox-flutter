@@ -10,7 +10,7 @@ require("util")
 local function releases(type)
     local resp, err
     for attempt = 1, MAX_ATTEMPTS do
-        resp, err = http.get({ url = BASE_URL:format(type.osType) })
+        resp, err = http.get({ url = getReleasesUrl(type.osType) })
         if resp ~= nil and resp.status_code == 200 then
             return json.decode(resp.body)
         end
