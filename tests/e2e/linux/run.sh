@@ -44,6 +44,22 @@ check_bogus_mirror_rejected() {
     assert_contains "$bogus_output" "invalid.example.invalid" 'bogus mirror error'
 }
 
+# On ARM64 the official flavour installs from git source; a bogus
+# $VFOX_FLUTTER_GITHUB_MIRROR must fail naming the host, proving the plugin
+# honours it instead of falling back to https://github.com.
+check_bogus_github_mirror_rejected() {
+    local flavor="$1"
+    local version="$2"
+    if [[ "$flavor" != "official" || "$(uname --machine)" != "aarch64" ]]; then
+        return 0
+    fi
+    local bogus_mirror="https://invalid.example.invalid"
+    local bogus_output bogus_code=0
+    bogus_output="$(VFOX_FLUTTER_GITHUB_MIRROR="$bogus_mirror" vfox install flutter@"$version" 2>&1)" || bogus_code=$?
+    ((bogus_code != 0)) || die "bogus GitHub mirror install unexpectedly succeeded"
+    assert_contains "$bogus_output" "invalid.example.invalid" 'bogus GitHub mirror error'
+}
+
 main() {
     local flavor mirror version
     flavor="$(require_env FLAVOR)"
@@ -55,6 +71,7 @@ main() {
     check_mirror_reachable "$flavor" "$mirror"
     setup_vfox
     check_bogus_mirror_rejected "$flavor" "$version"
+    check_bogus_github_mirror_rejected "$flavor" "$version"
 
     bash "$here/install.sh" "$version"
     activate_vfox

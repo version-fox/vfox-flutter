@@ -40,4 +40,25 @@ Describe 'mirror preflight' {
         $bogusCode | Should -Not -Be 0
         $bogusOutput | Should -Match ([regex]::Escape('invalid.example.invalid'))
     }
+
+    It 'rejects a bogus GitHub mirror naming the host' {
+        if ($Flavor -ne 'official') {
+            Set-ItResult -Skipped -Because 'only the official flavour installs from git source'
+        }
+        if ($env:PROCESSOR_ARCHITECTURE -ne 'ARM64') {
+            Set-ItResult -Skipped -Because 'only ARM64 installs from git source'
+        }
+        $origMirror = $env:VFOX_FLUTTER_GITHUB_MIRROR
+        try {
+            $env:VFOX_FLUTTER_GITHUB_MIRROR = 'https://invalid.example.invalid'
+            $PSNativeCommandUseErrorActionPreference = $false
+            $bogusOutput = (& vfox install "flutter@$(Resolve-FlutterVersion $Flavor)" 2>&1 | Out-String)
+            $bogusCode = $LASTEXITCODE
+            $PSNativeCommandUseErrorActionPreference = $true
+        } finally {
+            if ($null -eq $origMirror) { Remove-Item Env:\VFOX_FLUTTER_GITHUB_MIRROR } else { $env:VFOX_FLUTTER_GITHUB_MIRROR = $origMirror }
+        }
+        $bogusCode | Should -Not -Be 0
+        $bogusOutput | Should -Match ([regex]::Escape('invalid.example.invalid'))
+    }
 }
