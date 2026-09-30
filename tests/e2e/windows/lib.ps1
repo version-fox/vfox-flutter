@@ -1,5 +1,5 @@
-# NOTE: the default versions below duplicate tests/e2e/linux/config.sh
-# (PowerShell and bash share no config format). Bump both sides together.
+# NOTE: the default versions below duplicate tests/e2e/linux/setup.go
+# (PowerShell and Go share no config format). Bump both sides together.
 function Resolve-FlutterVersion {
     param(
         [Parameter(Mandatory)] [string] $Flavor

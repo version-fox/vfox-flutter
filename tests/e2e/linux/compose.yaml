@@ -1,0 +1,44 @@
+# Host-side runner for the Linux container E2E suite (see docs/e2e.md).
+#
+#   docker compose -f tests/e2e/linux/compose.yaml run --rm e2e
+#
+# The host requirement is Docker only: Go runs in the stock golang service
+# container, which drives the host daemon through the mounted socket, so it
+# cannot conflict with a vfox-managed toolchain. Rootless Docker users point
+# DOCKER_SOCK at their user socket:
+#
+#   DOCKER_SOCK="$XDG_RUNTIME_DIR/docker.sock" docker compose -f ... run --rm e2e
+#
+# Every knob below forwards only when set in the caller's env; empty means
+# "use the built-in default" (see matrix.go).
+
+services:
+  e2e:
+    image: golang:1.26.8
+    working_dir: /work/tests/e2e/linux
+    volumes:
+      - ${DOCKER_SOCK:-/var/run/docker.sock}:/var/run/docker.sock
+      - ../../..:/work
+      - e2e-go-modcache:/go/pkg
+    environment:
+      # Ryuk (the reaper sidecar) is disabled on purpose: it exposes a port on
+      # the host daemon and waits for it to be dialable, which fails when the
+      # suite itself runs in a container (Docker-out-of-Docker), especially
+      # under rootless Docker where containers cannot hairpin back to
+      # host-published ports. Every test container is terminated explicitly
+      # via t.Cleanup instead; leftovers from killed runs share the
+      # vfox-flutter-e2e- name prefix for easy pruning.
+      TESTCONTAINERS_RYUK_DISABLED: "true"
+      ARCH: ${ARCH:-}
+      E2E_MAX_JOBS: ${E2E_MAX_JOBS:-}
+      VFOX_VERSION: ${VFOX_VERSION:-}
+      FLAVOR: ${FLAVOR:-}
+      MIRROR: ${MIRROR:-}
+      FLUTTER_VERSION: ${FLUTTER_VERSION:-}
+      OHOS_VERSION: ${OHOS_VERSION:-}
+      VFOX_FLUTTER_GITHUB_MIRROR: ${VFOX_FLUTTER_GITHUB_MIRROR:-}
+      E2E_RETRY_ATTEMPTS: ${E2E_RETRY_ATTEMPTS:-}
+    command: ["go", "test", "-v", "-timeout", "55m", "-run", "TestE2E", "./..."]
+
+volumes:
+  e2e-go-modcache:
