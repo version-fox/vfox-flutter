@@ -52,7 +52,12 @@ function M.checkout(baseVersion, versionName)
     if dir == nil then
         error("cannot resolve the vfox home directory")
     end
-    local cloneUrl = M.repoUrl()
+    local repoUrl = M.repoUrl()
+    local cloneUrl = git.mirrorUrl(repoUrl)
+    if cloneUrl ~= repoUrl then
+        io.write(string.format("Using GitHub mirror %s\n", cloneUrl))
+        io.flush()
+    end
     git.resetDir(dir)
     if not git.init(dir) then
         error("failed to initialize git in " .. dir .. " (is git installed?)")

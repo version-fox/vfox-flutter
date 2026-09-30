@@ -55,7 +55,5 @@ run on Windows ARM64.
   metadata (such as `2.10.0`) keep their existing x64-only behavior.
 - **Mirrors don't apply to archive downloads.** `FLUTTER_STORAGE_BASE_URL`
   (see `mirror.md`) only affects archive downloads; source installs clone
-  from GitHub. If GitHub sends no data within 10s, the plugin
-  automatically falls back to the `https://gh-proxy.org/` mirror and shows
-  a countdown while probing. Once the transfer starts it is never
-  interrupted.
+  from GitHub. Set `VFOX_FLUTTER_GITHUB_MIRROR` (see `mirror.md`) to mirror the
+  GitHub source install.
