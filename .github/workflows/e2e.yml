@@ -24,7 +24,10 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
-      - run: bash tests/e2e/linux/e2e.sh
+      # No host Go anywhere: the suite runs from the Compose runner service
+      # driving the runner daemon through the mounted socket (same invocation
+      # as docs/e2e.md), so CI dogfoods the documented setup.
+      - run: docker compose -f tests/e2e/linux/compose.yaml run --rm e2e
 
   e2e-windows:
     if: github.repository == 'version-fox/vfox-flutter'

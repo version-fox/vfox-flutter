@@ -6,15 +6,29 @@ each `vfox` x `flavor` x `mirror` combination gets its own throwaway container.
 
 ## Ubuntu 26.04.1
 
-Assume that Docker Engine (in either rootful or rootless mode) is already installed.
-
-Execute in Bash,
+Only Docker Engine (in either rootful or rootless mode) is required on the
+host. Execute in Bash,
 
 ```bash
 sudo apt install --assume-yes git
 git clone git@github.com:version-fox/vfox-flutter.git
 cd ./vfox-flutter/
-bash tests/e2e/linux/e2e.sh
+docker compose -f tests/e2e/linux/compose.yaml run --rm e2e
+```
+
+With rootless Docker the daemon socket lives elsewhere; point `DOCKER_SOCK`
+at it instead:
+
+```bash
+DOCKER_SOCK="$XDG_RUNTIME_DIR/docker.sock" \
+    docker compose -f tests/e2e/linux/compose.yaml run --rm e2e
+```
+
+To check the `vfox` x `flavor` x `mirror` matrix expansion without
+starting containers, override the service command:
+
+```bash
+docker compose -f tests/e2e/linux/compose.yaml run --rm e2e go test -short ./...
 ```
 
 On ARM64 it runs the official flavor only: OpenHarmony publishes no `linux-arm64` Dart SDK (see `docs/ohos.md`), so the
@@ -28,7 +42,8 @@ override the architecture:
 
 ```bash
 docker run --privileged --rm tonistiigi/binfmt --install all
-ARCH=arm64 bash tests/e2e/linux/e2e.sh
+cd ./vfox-flutter/
+ARCH=arm64 docker compose -f tests/e2e/linux/compose.yaml run --rm e2e
 ```
 
 ## Windows 11 Pro
