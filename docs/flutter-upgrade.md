@@ -47,7 +47,7 @@ version and leaves it absent.
 Execute in Bash,
 
 ```bash
-find ~/.vfox/cache/flutter/v-3.47.0 -name .vfox-manifest -print -delete
+rm "$(vfox info --format '{{.Path}}' flutter@3.47.0)/.vfox-manifest"
 ```
 
 ### Windows 11
@@ -55,6 +55,5 @@ find ~/.vfox/cache/flutter/v-3.47.0 -name .vfox-manifest -print -delete
 Assume that PowerShell 7 is already installed. Execute in PowerShell 7,
 
 ```powershell
-Get-ChildItem "$env:USERPROFILE\.vfox\cache\flutter\v-3.47.0" -Recurse -Force -Filter .vfox-manifest |
-    Remove-Item
+Remove-Item "$(vfox info --format '{{.Path}}' flutter@3.47.0)/.vfox-manifest"
 ```

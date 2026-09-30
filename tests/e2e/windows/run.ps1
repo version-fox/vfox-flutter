@@ -1,49 +1,32 @@
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $true
+# CI hygiene: container stdout is redirected, where PowerShell would otherwise
+# serialize progress records (e.g. "Preparing modules for first use" on the
+# first Pester import) as CLIXML noise into the log. Our code uses no
+# Write-Progress, so silencing it loses nothing.
+$ProgressPreference = 'SilentlyContinue'
 . "$PSScriptRoot\lib.ps1"
 
-$vfox = if ($env:VFOX_VERSION) { $env:VFOX_VERSION } else { 'latest' }
-$flavor = if ($env:FLAVOR) { $env:FLAVOR } else { throw 'FAIL FLAVOR is not set' }
-$mirror = if ($env:FLUTTER_STORAGE_BASE_URL) { $env:FLUTTER_STORAGE_BASE_URL } else { 'default' }
-$version = if ($flavor -eq 'official') {
-    if ($env:FLUTTER_VERSION) { $env:FLUTTER_VERSION } else { '3.47.4' }
-} elseif ($flavor -eq 'ohos') {
-    if ($env:OHOS_VERSION) { $env:OHOS_VERSION } else { '3.41.10-ohos-1.0.0' }
-} else {
-    throw "FAIL unknown flavor $flavor"
+function Invoke-E2EFixture {
+    param(
+        [Parameter(Mandatory)] [string] $Name
+    )
+    $result = Invoke-Pester -Path "$PSScriptRoot\$Name.Tests.ps1" -Output Detailed -PassThru
+    if ($result.FailedCount -gt 0) {
+        throw "FAIL $Name.Tests.ps1: $($result.FailedCount) test(s) failed ($($result.PassedCount) passed, $($result.SkippedCount) skipped)"
+    }
 }
 
+$flavor = if ($env:FLAVOR) { $env:FLAVOR } else { throw 'FAIL FLAVOR is not set' }
+$mirror = if ($env:FLUTTER_STORAGE_BASE_URL) { $env:FLUTTER_STORAGE_BASE_URL } else { 'default' }
+$version = Resolve-FlutterVersion $flavor
+$vfox = if ($env:VFOX_VERSION) { $env:VFOX_VERSION } else { 'latest' }
+
 Write-Output ("=== vfox {0}, flutter {1}, {2}, mirror {3}, {4} ===" -f $vfox, $version, $flavor, $mirror, $env:PROCESSOR_ARCHITECTURE)
-if (($flavor -eq 'official') -and ($mirror -ne 'default')) {
-    $mirrorIndex = $mirror.TrimEnd('/') + '/flutter_infra_release/releases/releases_windows.json'
-    $mirrorOk = $false
-    $PSNativeCommandUseErrorActionPreference = $false
-    for ($attempt = 1; $attempt -le 3; $attempt++) {
-        & curl.exe -fsSL --max-time 20 -o NUL $mirrorIndex
-        if ($LASTEXITCODE -eq 0) {
-            $mirrorOk = $true
-            break
-        }
-        Start-Sleep -Seconds 10
-    }
-    $PSNativeCommandUseErrorActionPreference = $true
-    if (-not $mirrorOk) { throw "FAIL mirror $mirror is unreachable ($mirrorIndex)" }
-    Write-Output "PASS mirror $mirror serves the releases index"
-}
+
 . "$PSScriptRoot\setup.ps1"
-if ($flavor -eq 'official') {
-    $bogusMirror = 'https://invalid.example.invalid'
-    $origMirror = $env:FLUTTER_STORAGE_BASE_URL
-    $env:FLUTTER_STORAGE_BASE_URL = $bogusMirror
-    $PSNativeCommandUseErrorActionPreference = $false
-    $bogusOutput = (& vfox install "flutter@$version" 2>&1 | Out-String)
-    $bogusCode = $LASTEXITCODE
-    $PSNativeCommandUseErrorActionPreference = $true
-    if ($null -eq $origMirror) { Remove-Item Env:\FLUTTER_STORAGE_BASE_URL } else { $env:FLUTTER_STORAGE_BASE_URL = $origMirror }
-    if ($bogusCode -eq 0) { throw 'FAIL bogus mirror install unexpectedly succeeded' }
-    if ($bogusOutput -notmatch [regex]::Escape('invalid.example.invalid')) { throw ("FAIL bogus mirror error is missing invalid.example.invalid`n--- actual ---`n{0}" -f $bogusOutput) }
-    Write-Output 'PASS bogus mirror error contains invalid.example.invalid'
-}
+Invoke-E2EFixture 'preflight'
+
 Invoke-Native { & pwsh -NoProfile -File "$PSScriptRoot\install.ps1" -Version $version } "install.ps1 (flutter $version)"
 
 $PSNativeCommandUseErrorActionPreference = $false
@@ -51,6 +34,15 @@ $activation = @(vfox activate pwsh) -join "`r`n"
 $activationCode = $LASTEXITCODE
 $PSNativeCommandUseErrorActionPreference = $true
 if ($activationCode -ne 0) { throw "FAIL vfox activate pwsh exited with code $activationCode" }
-Invoke-Expression $activation
+# Dot-source via a temp file instead of Invoke-Expression: same effect
+# (runs vfox's assignments in this scope), but auditable on disk and
+# PSScriptAnalyzer-clean.
+$activationFile = Join-Path ([System.IO.Path]::GetTempPath()) "vfox-activate-$([System.Guid]::NewGuid()).ps1"
+try {
+    $activation | Set-Content -Path $activationFile
+    . $activationFile
+} finally {
+    Remove-Item $activationFile -ErrorAction SilentlyContinue
+}
 
-Invoke-Native { & pwsh -NoProfile -File "$PSScriptRoot\verify.ps1" -Flavor $flavor -Version $version } "verify.ps1 ($flavor)"
+Invoke-E2EFixture 'verify'

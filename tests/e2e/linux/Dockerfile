@@ -3,14 +3,13 @@ FROM ubuntu:26.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN <<EOF
-set -eux
+set -o errexit -o nounset -o xtrace
 apt-get update
 apt-get install --assume-yes \
     curl \
     git \
     golang \
-    libglu1-mesa \
-    unzip \
+    jq \
     zip
 EOF
 
