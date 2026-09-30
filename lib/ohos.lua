@@ -9,13 +9,21 @@ local REPO = "CPF-Flutter/flutter_flutter"
 local RELEASES_URL = "https://gitcode.com/api/v5/repos/%s/releases?per_page=100"
 local CLONE_URL = "https://gitcode.com/%s.git"
 local NOTE = "OpenHarmony"
-local RELEASES_ATTEMPTS = 3
+local RELEASES_ATTEMPTS = 5
 local RETRY_DELAY = 10
+-- HTTP 429 (rate limited) waits progressively longer, so installs can ride
+-- out short quota windows instead of failing immediately. Ordinary errors
+-- keep the short delay: there is no window to wait out.
+local RATE_LIMIT_DELAYS = { 30, 60, 120, 180 }
 
 local M = {}
 
 function M.isOhosVersion(version)
     return type(version) == "string" and version:find(MARKER, 1, true) ~= nil
+end
+
+local function isRateLimited(resp, err)
+    return err == nil and resp ~= nil and resp.status_code == 429
 end
 
 local function releases()
@@ -32,7 +40,11 @@ local function releases()
             lastErr = err or ("HTTP " .. tostring(resp and resp.status_code))
         end
         if attempt < RELEASES_ATTEMPTS then
-            sleep(RETRY_DELAY)
+            if isRateLimited(resp, err) then
+                sleep(RATE_LIMIT_DELAYS[attempt] or RATE_LIMIT_DELAYS[#RATE_LIMIT_DELAYS])
+            else
+                sleep(RETRY_DELAY)
+            end
         end
     end
     return nil, lastErr
