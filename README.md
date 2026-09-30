@@ -24,6 +24,8 @@ sudo apt install --assume-yes curl git unzip xz-utils zip libglu1-mesa
 vfox use --global flutter@3.47.4
 ```
 
+`sudo apt install --assume-yes curl git unzip xz-utils zip libglu1-mesa` comes from https://docs.flutter.dev/install/manual#download-prerequisites ,
+these are prerequisite packages not included with the Flutter SDK.
 You can verify this using the following command:
 
 ```bash

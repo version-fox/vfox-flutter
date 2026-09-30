@@ -32,9 +32,15 @@ foreach ($vfox in $foxes) {
     foreach ($flavor in $flavours) {
         foreach ($mirror in $mirrorList) {
             if ((-not $mirrorExplicit) -and ($mirror -ne 'default') -and ($vfox -ne 'latest')) { continue }
-            $combos.Add([pscustomobject]@{ Vfox = $vfox; Flavor = $flavor; Mirror = $mirror })
+            $combos.Add([pscustomobject]@{ Vfox = $vfox; Flavor = $flavor; Mirror = $mirror; Spaces = 'normal' })
         }
     }
+}
+# One combo with a VFOX_HOME path containing a space, to exercise the
+# PowerShell -EncodedCommand quoting fix. Only on x64: arm64 runs official
+# only, which downloads a prebuilt archive and never touches git paths.
+if ($arch -eq 'amd64') {
+    $combos.Add([pscustomobject]@{ Vfox = 'latest'; Flavor = 'ohos'; Mirror = 'default'; Spaces = 'yes' })
 }
 
 $maxJobs = 2
@@ -43,7 +49,9 @@ if ($maxJobs -lt 1) { $maxJobs = 1 }
 
 function Get-ComboSlug {
     param([object] $Combo)
-    return ($Combo.Vfox + '-' + $Combo.Flavor + '-' + ($Combo.Mirror -replace '[^A-Za-z0-9]', '_'))
+    $slug = ($Combo.Vfox + '-' + $Combo.Flavor + '-' + ($Combo.Mirror -replace '[^A-Za-z0-9]', '_'))
+    if ($Combo.Spaces -eq 'yes') { $slug += '-spaces' }
+    return $slug
 }
 
 function Get-ContainerExitCode {
@@ -65,6 +73,7 @@ for ($start = 0; $start -lt $combos.Count; $start += $maxJobs) {
         $flavor = $combo.Flavor
         $mirror = $combo.Mirror
         $prefix = "vfox $vfox, $flavor, mirror $mirror, $platform"
+        if ($combo.Spaces -eq 'yes') { $prefix += ', spaces' }
         Write-Output "[$prefix] === start ==="
 
         $slug = Get-ComboSlug $combo
@@ -72,6 +81,7 @@ for ($start = 0; $start -lt $combos.Count; $start += $maxJobs) {
             'run', '-d', '--platform', $platform,
             '-e', "VFOX_VERSION=$vfox", '-e', "FLAVOR=$flavor",
             '-e', "VFOX_E2E_SLOT=$slug")
+        if ($combo.Spaces -eq 'yes') { $runArgs += @('-e', "VFOX_E2E_SPACES=yes") }
         if ($mirror -ne 'default') { $runArgs += @('-e', "FLUTTER_STORAGE_BASE_URL=$mirror") }
         $runArgs += $Image
 

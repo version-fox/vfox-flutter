@@ -33,8 +33,6 @@ vfox search flutter
 - **`linux-arm64` and `windows-arm64`.** Upstream publishes only x64 Dart SDKs, so the first
   `flutter` run fails there (`It appears that the downloaded file is corrupt`).
   The ARM64 e2e runs the official flavor only.
-- **A Windows home containing a space** (`C:\Users\John Doe\.vfox`) is not supported;
-  point vfox at a path without spaces with `$env:VFOX_HOME = 'D:\vfox'`.
 - **The first `flutter` command is slow.** It builds the tool and downloads the Dart SDK
   from Huawei's OBS, so it needs a network connection.
 - **No checksum is verified.** Git history is the integrity check, and this is a

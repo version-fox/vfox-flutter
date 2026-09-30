@@ -17,28 +17,14 @@ local function quote(value)
     return "'" .. value:gsub("'", "'\\''") .. "'"
 end
 
+-- PowerShell single-quoted strings are literal: 'text' escapes ' as ''.
+local function psQuote(value)
+    return "'" .. value:gsub("'", "''") .. "'"
+end
+
 local function exec(command)
     local result = os.execute(command)
     return result == 0 or result == true
-end
-
-local function git(root, args)
-    return exec("git -C " .. quote(root) .. " " .. args)
-end
-
-local function sep()
-    if RUNTIME.osType == "windows" then
-        return "\\"
-    end
-    return "/"
-end
-
-local function localPath(path)
-    return path:gsub("/", sep())
-end
-
-local function isGithubUrl(url)
-    return type(url) == "string" and url:sub(1, #GH_BASE) == GH_BASE
 end
 
 local B64CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
@@ -68,6 +54,35 @@ end
 -- interleaving NUL bytes is sufficient.
 local function utf16le(data)
     return data:gsub("(.)", "%1" .. string.char(0))
+end
+
+-- Run a PowerShell script via -EncodedCommand (base64 UTF-16LE). The encoded
+-- string has no spaces or quotes, so Go's argv re-quoting cannot mangle it.
+local function execPS(script)
+    return exec("powershell -NoProfile -NoLogo -ExecutionPolicy Bypass -EncodedCommand "
+        .. base64(utf16le(script)))
+end
+
+local function git(root, args)
+    if RUNTIME.osType == "windows" then
+        return execPS("& git -C " .. psQuote(root) .. " " .. args)
+    end
+    return exec("git -C " .. quote(root) .. " " .. args)
+end
+
+local function sep()
+    if RUNTIME.osType == "windows" then
+        return "\\"
+    end
+    return "/"
+end
+
+local function localPath(path)
+    return path:gsub("/", sep())
+end
+
+local function isGithubUrl(url)
+    return type(url) == "string" and url:sub(1, #GH_BASE) == GH_BASE
 end
 
 -- Probe whether the remote answers within the timeout. Success means the
@@ -147,8 +162,7 @@ Remove-Item -Force $tmp -ErrorAction SilentlyContinue
 Write-Host ""
 exit $proc.ExitCode
 ]], psArg(remote), psArg(ref), timeout)
-    return exec("powershell -NoProfile -NoLogo -ExecutionPolicy Bypass -EncodedCommand "
-        .. base64(utf16le(script)))
+    return execPS(script)
 end
 
 local function probeWithTimeout(remote, ref, timeout)
@@ -162,10 +176,9 @@ end
 
 function M.removeDir(path)
     if RUNTIME.osType == "windows" then
-        exec('if exist "' .. path .. '" rmdir /s /q "' .. path .. '"')
-    else
-        exec("rm -rf " .. quote(path))
+        return execPS("Remove-Item -Recurse -Force " .. psQuote(path) .. " -ErrorAction SilentlyContinue")
     end
+    return exec("rm -rf " .. quote(path))
 end
 
 local function vfoxHome()
@@ -197,11 +210,12 @@ local function parentDir(dir)
 end
 
 local function makeParentDir(dir)
-    if RUNTIME.osType == "windows" then
-        return
-    end
     local parent = parentDir(dir)
     if parent == nil then
+        return
+    end
+    if RUNTIME.osType == "windows" then
+        execPS("New-Item -ItemType Directory -Force " .. psQuote(parent) .. " | Out-Null")
         return
     end
     exec("mkdir -p " .. quote(parent))
@@ -213,6 +227,15 @@ function M.resetDir(dir)
 end
 
 function M.init(root)
+    if RUNTIME.osType == "windows" then
+        local script = string.format([[
+& git init -q %s
+if ($LASTEXITCODE -ne 0) { exit 1 }
+& git -C %s config core.longpaths true
+exit $LASTEXITCODE
+]], psQuote(root), psQuote(root))
+        return execPS(script)
+    end
     if not exec("git init -q " .. quote(root)) then
         return false
     end

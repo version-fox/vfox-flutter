@@ -13,12 +13,40 @@ local function joinPath(a, b)
     return a .. sep() .. b
 end
 
--- vfox feeds command strings to cmd.exe /c on Windows. Go has to re-quote the
--- whole command line, which turns a double quote into \" so cmd.exe reads a
--- quoted path back as the volume-relative path \path\ and rejects it with
--- "The filename, directory name, or volume label syntax is incorrect." Match
--- lib/git.lua and pass paths unquoted there; a path with a space then simply
--- skips the drift check instead of breaking vfox use.
+local B64CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+
+local function base64(data)
+    local out = {}
+    for i = 1, #data, 3 do
+        local a = data:byte(i)
+        local b = data:byte(i + 1) or 0
+        local c = data:byte(i + 2) or 0
+        local n = a * 65536 + b * 256 + c
+        out[#out + 1] = B64CHARS:sub(math.floor(n / 262144) % 64 + 1, math.floor(n / 262144) % 64 + 1)
+            .. B64CHARS:sub(math.floor(n / 4096) % 64 + 1, math.floor(n / 4096) % 64 + 1)
+        if i + 1 > #data then
+            out[#out + 1] = "=="
+        elseif i + 2 > #data then
+            out[#out + 1] = B64CHARS:sub(math.floor(n / 64) % 64 + 1, math.floor(n / 64) % 64 + 1) .. "="
+        else
+            out[#out + 1] = B64CHARS:sub(math.floor(n / 64) % 64 + 1, math.floor(n / 64) % 64 + 1)
+                .. B64CHARS:sub(n % 64 + 1, n % 64 + 1)
+        end
+    end
+    return table.concat(out)
+end
+
+local function utf16le(data)
+    return data:gsub("(.)", "%1" .. string.char(0))
+end
+
+-- PowerShell single-quoted strings are literal: 'text' escapes ' as ''.
+local function psQuote(value)
+    return "'" .. value:gsub("'", "''") .. "'"
+end
+
+-- Shell single-quote quoting. On Windows, capture wraps commands in PowerShell
+-- with psQuote instead; this function is for Unix only.
 local function quote(value)
     if RUNTIME.osType == "windows" then
         return value
@@ -28,7 +56,12 @@ end
 
 local function capture(command)
     local function run()
-        local pipe = io.popen(command)
+        local shellCmd = command
+        if RUNTIME.osType == "windows" then
+            shellCmd = "powershell -NoProfile -NoLogo -ExecutionPolicy Bypass -EncodedCommand "
+                .. base64(utf16le(command))
+        end
+        local pipe = io.popen(shellCmd)
         if pipe == nil then
             return nil
         end
@@ -77,7 +110,7 @@ function M.gitRoot(sdkRoot)
     end
     local listCmd
     if RUNTIME.osType == "windows" then
-        listCmd = "dir /b /ad " .. quote(sdkRoot)
+        listCmd = "Get-ChildItem -Directory " .. psQuote(sdkRoot) .. " | Select-Object -ExpandProperty Name"
     else
         listCmd = "find " .. quote(sdkRoot) .. " -maxdepth 1 -mindepth 1 -type d -printf '%f\\n'"
     end
@@ -97,12 +130,19 @@ function M.gitRoot(sdkRoot)
     return nil
 end
 
+local function gitRevParse(root)
+    if RUNTIME.osType == "windows" then
+        return capture("& git -C " .. psQuote(root) .. " rev-parse HEAD")
+    end
+    return capture("git -C " .. quote(root) .. " rev-parse HEAD")
+end
+
 function M.currentHead(sdkRoot)
     local root = M.gitRoot(sdkRoot)
     if root == nil then
         return nil
     end
-    return capture("git -C " .. quote(root) .. " rev-parse HEAD")
+    return gitRevParse(root)
 end
 
 function M.manifestPath(sdkRoot)
@@ -118,7 +158,7 @@ function M.write(sdkRoot, info)
     if root == nil then
         return false
     end
-    local head = capture("git -C " .. quote(root) .. " rev-parse HEAD")
+    local head = gitRevParse(root)
     local data = {
         plugin = "vfox-flutter",
         plugin_version = (PLUGIN and PLUGIN.version) or "unknown",

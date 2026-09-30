@@ -8,7 +8,11 @@ $slot = if ($env:VFOX_E2E_SLOT) { $env:VFOX_E2E_SLOT } else { 'default' }
 $slotRoot = Join-Path $env:USERPROFILE "vfox-e2e-runs\$slot"
 New-Item -ItemType Directory -Force -Path (Join-Path $slotRoot 'tmp') | Out-Null
 $env:USERPROFILE = $slotRoot
-$env:VFOX_HOME = Join-Path $slotRoot '.vfox'
+if ($env:VFOX_E2E_SPACES -eq 'yes') {
+    $env:VFOX_HOME = "$slotRoot\.vfox with space"
+} else {
+    $env:VFOX_HOME = Join-Path $slotRoot '.vfox'
+}
 $env:TEMP = Join-Path $slotRoot 'tmp'
 $env:TMP = $env:TEMP
 
