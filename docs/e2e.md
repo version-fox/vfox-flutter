@@ -67,9 +67,9 @@ winget install --id Microsoft.PowerShell --source winget --exact
 ```powershell
 winget install --id Git.Git --source winget --exact
 
-Invoke-WebRequest -UseBasicParsing `
+curl.exe -fsSL --retry 3 --retry-delay 5 --retry-all-errors `
     "https://raw.githubusercontent.com/microsoft/Windows-Containers/Main/helpful_tools/Install-DockerCE/install-docker-ce.ps1" `
-    -OutFile ./install-docker-ce.ps1
+    -o ./install-docker-ce.ps1
 ```
 
 3. Execute in PowerShell 7 with administrator privileges,
@@ -81,9 +81,25 @@ Invoke-WebRequest -UseBasicParsing `
 4. Execute in PowerShell 7,
 
 ```powershell
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.docker\cli-plugins" | Out-Null
+curl.exe -fsSL --retry 3 --retry-delay 5 --retry-all-errors `
+    "https://github.com/docker/compose/releases/download/v5.5.1/docker-compose-windows-x86_64.exe" `
+    -o "$env:USERPROFILE\.docker\cli-plugins\docker-compose.exe"
+```
+
+5. Execute in PowerShell 7,
+
+```powershell
 git clone git@github.com:version-fox/vfox-flutter.git
 cd ./vfox-flutter/
-pwsh -NoProfile -File .\tests\e2e\windows\e2e.ps1
+docker compose -f tests/e2e/windows/compose.yaml run --rm --build e2e
+```
+
+To check the `vfox` x `flavor` x `mirror` matrix expansion without
+starting containers, override the service command:
+
+```powershell
+docker compose -f tests/e2e/windows/compose.yaml run --rm e2e go test -short ./...
 ```
 
 ### arm64
@@ -98,9 +114,16 @@ winget install --id Microsoft.PowerShell --source winget --exact
 
 ```powershell
 winget install --id Git.Git --source winget --exact
+# Host Go stays here: building the moby engine from source needs it. The
+# suite itself runs from a container (see below), no host Go involved.
 winget install --id GoLang.Go --source winget --exact
 git clone git@github.com:version-fox/vfox-flutter.git
 cd ./vfox-flutter/
 pwsh -NoProfile -File .\tests\e2e\windows\install-docker-arm64.ps1
-pwsh -NoProfile -File .\tests\e2e\windows\e2e.ps1
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.docker\cli-plugins" | Out-Null
+curl.exe -fsSL --retry 3 --retry-delay 5 --retry-all-errors `
+    "https://github.com/docker/compose/releases/download/v5.5.1/docker-compose-windows-aarch64.exe" `
+    -o "$env:USERPROFILE\.docker\cli-plugins\docker-compose.exe"
+$env:ARCH = 'arm64'
+docker compose -f tests/e2e/windows/compose.yaml run --rm --build e2e
 ```

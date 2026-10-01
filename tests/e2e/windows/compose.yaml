@@ -1,0 +1,45 @@
+# Host-side runner for the Windows container E2E suite (see docs/e2e.md).
+#
+#   docker compose -f tests/e2e/windows/compose.yaml run --rm --build e2e
+#
+# The host requirement is Docker plus the Compose v5 plugin (installed once
+# per machine, see docs/e2e.md); Go never touches the host, so it cannot
+# conflict with a vfox-managed toolchain. The runner image
+# (Dockerfile-runner: stock servercore plus the pinned Go MSI) is built for
+# the host arch, because there is no stock golang Windows image for arm64.
+# It drives the host daemon through the mounted named pipe. Ryuk is disabled
+# in code (it has no Windows image); every container is terminated explicitly
+# via t.Cleanup instead.
+#
+# Every knob below forwards only when set in the caller's env; empty means
+# "use the built-in default" (see matrix.go).
+
+services:
+  e2e:
+    build:
+      context: ../../..
+      dockerfile: tests/e2e/windows/Dockerfile-runner
+      args:
+        BASE_IMAGE: mcr.microsoft.com/windows/servercore:ltsc2025-KB5122871-${ARCH:-amd64}
+    image: vfox-flutter/e2e-runner:1.26.8
+    working_dir: C:/work/tests/e2e/windows
+    volumes:
+      - type: npipe
+        source: \\.\pipe\docker_engine
+        target: \\.\pipe\docker_engine
+      - ../../..:C:/work
+      - e2e-go-modcache:C:/m
+    environment:
+      ARCH: ${ARCH:-}
+      E2E_MAX_JOBS: ${E2E_MAX_JOBS:-}
+      VFOX_VERSION: ${VFOX_VERSION:-}
+      FLAVOR: ${FLAVOR:-}
+      MIRROR: ${MIRROR:-}
+      FLUTTER_VERSION: ${FLUTTER_VERSION:-}
+      OHOS_VERSION: ${OHOS_VERSION:-}
+      VFOX_FLUTTER_GITHUB_MIRROR: ${VFOX_FLUTTER_GITHUB_MIRROR:-}
+      E2E_RETRY_ATTEMPTS: ${E2E_RETRY_ATTEMPTS:-}
+    command: ["go", "test", "-v", "-timeout", "55m", "-run", "TestE2E", "./..."]
+
+volumes:
+  e2e-go-modcache:
