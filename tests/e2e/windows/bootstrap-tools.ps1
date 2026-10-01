@@ -1,5 +1,21 @@
 $ErrorActionPreference = 'Stop'
-. "$PSScriptRoot\lib.ps1"
+
+# Local copy of the native-command guard (the e2e/lib.ps1 helper is gone;
+# the suite is driven from Go now). Fails unless the command exits 0.
+function Invoke-Native {
+    param(
+        [Parameter(Mandatory)] [scriptblock] $Cmd,
+        [Parameter(Mandatory)] [string] $What,
+        [int[]] $Ok = 0
+    )
+    $prev = $PSNativeCommandUseErrorActionPreference
+    $PSNativeCommandUseErrorActionPreference = $false
+    & $Cmd
+    $code = $LASTEXITCODE
+    $PSNativeCommandUseErrorActionPreference = $prev
+    if ($null -eq $code) { throw "FAIL $What did not run" }
+    if ($code -notin $Ok) { throw "FAIL $What exited with code $code" }
+}
 
 $IsArm64 = $env:PROCESSOR_ARCHITECTURE -eq 'ARM64'
 $pwshArch = if ($IsArm64) { 'arm64' } else { 'x64' }
@@ -20,11 +36,3 @@ if (-not (Test-Path 'C:\Program Files\PowerShell\7\pwsh.exe')) { throw 'FAIL pws
 if (-not (Test-Path 'C:\Program Files\Git\cmd\git.exe')) { throw 'FAIL git.exe is missing after the Git installer' }
 Invoke-Native { & 'C:\Program Files\Git\cmd\git.exe' config --system core.longpaths true } 'enable system-wide git long paths'
 New-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' -Name 'LongPathsEnabled' -Value 1 -PropertyType DWORD -Force | Out-Null
-
-# Pester 5 runs the *.Tests.ps1 suites (see run.ps1). Pinned, because the
-# container image must stay reproducible; run.ps1 only requires v5 or newer.
-$PesterVersion = '5.7.1'
-$pwsh = 'C:\Program Files\PowerShell\7\pwsh.exe'
-Invoke-Native { & $pwsh -NoProfile -Command "Set-PSRepository -Name 'PSGallery' -InstallationPolicy 'Trusted'" } 'trust the PSGallery repository'
-Invoke-Native { & $pwsh -NoProfile -Command "Install-Module -Name 'Pester' -RequiredVersion '$PesterVersion' -Scope 'AllUsers' -Force -SkipPublisherCheck" } "the Pester $PesterVersion module install"
-Invoke-Native { & $pwsh -NoProfile -Command "& { Import-Module 'Pester' -RequiredVersion '$PesterVersion'; (Get-Module 'Pester').Version.ToString() }" } "importing Pester $PesterVersion"

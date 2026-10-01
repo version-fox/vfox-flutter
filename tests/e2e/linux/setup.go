@@ -11,8 +11,8 @@ import (
 	tc "github.com/testcontainers/testcontainers-go"
 )
 
-// NOTE: keep in sync with tests/e2e/windows/lib.ps1, which duplicates these
-// defaults (Go and PowerShell share no config format). Bump both together.
+// NOTE: keep in sync with tests/e2e/windows/setup.go, which duplicates these
+// defaults (the two Go modules share no config format). Bump both together.
 const (
 	defaultOfficialVersion = "3.47.4"
 	defaultOhosVersion     = "3.41.10-ohos-1.0.0"

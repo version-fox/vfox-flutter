@@ -14,7 +14,7 @@ import (
 
 // NOTE: the drift-warning strings asserted here are part of the plugin's
 // user-facing contract (see hooks/ lib/). If the Lua side rewords them,
-// update this file and tests/e2e/windows/verify.Tests.ps1 together.
+// update this file and tests/e2e/windows/verify.go together.
 
 // sdkDir prints the SDK root for the active flutter on PATH
 // (was lib.sh sdk_dir).
