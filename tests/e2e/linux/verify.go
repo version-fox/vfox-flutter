@@ -1,4 +1,4 @@
-package e2e
+package linux
 
 import (
 	"context"
@@ -10,6 +10,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 	tc "github.com/testcontainers/testcontainers-go"
+
+	"github.com/version-fox/vfox-flutter/tests/e2e/common"
 )
 
 // NOTE: the drift-warning strings asserted here are part of the plugin's
@@ -43,11 +45,6 @@ func verifySdkLayout(ctx context.Context, t *testing.T, ctr tc.Container, flavor
 	t.Log("PASS the OpenHarmony SDK is a git checkout with its engine pins tracked")
 }
 
-// manifest is the anchored-install record the plugin writes into the SDK.
-type manifest struct {
-	ExpectedHead string `json:"expected_head"`
-}
-
 // verifyManifestDrift anchors the installed HEAD via .vfox-manifest, proves
 // `vfox use` reports drift exactly when the SDK moves (simulated
 // `flutter upgrade`), and goes quiet again once restored.
@@ -55,7 +52,7 @@ func verifyManifestDrift(ctx context.Context, t *testing.T, ctr tc.Container, ve
 	t.Helper()
 	manifestPath := sdk + "/.vfox-manifest"
 	raw := execOK(ctx, t, ctr, fmt.Sprintf("cat %q", manifestPath))
-	var m manifest
+	var m common.Manifest
 	if err := json.Unmarshal([]byte(raw), &m); err != nil {
 		t.Fatalf("the .vfox-manifest is not valid JSON: %v\n--- actual ---\n%s", err, raw)
 	}
@@ -97,19 +94,6 @@ func verifyManifestDrift(ctx context.Context, t *testing.T, ctr tc.Container, ve
 	require.NotContains(t, use(), "has drifted", "a restored SDK reports no drift")
 }
 
-// toolsDart extracts the Dart version from `flutter --version` output
-// (was: awk '/Tools/ { print $4 }').
-func toolsDart(flutterVersion string) string {
-	for _, line := range strings.Split(flutterVersion, "\n") {
-		if strings.Contains(line, "Tools") {
-			if f := strings.Fields(line); len(f) >= 4 {
-				return f[3]
-			}
-		}
-	}
-	return ""
-}
-
 // verifyToolchain boots the toolchain (pub.dev reachable) and checks the
 // dart/flutter versions agree with each other and the SDK checkout.
 func verifyToolchain(ctx context.Context, t *testing.T, ctr tc.Container, sdk string) {
@@ -122,7 +106,7 @@ func verifyToolchain(ctx context.Context, t *testing.T, ctr tc.Container, sdk st
 	head := strings.TrimSpace(execOK(ctx, t, ctr, fmt.Sprintf("git -C %q rev-parse HEAD", sdk)))
 	require.Contains(t, flutter, head[:10], "flutter --version revision")
 
-	dartWant := toolsDart(flutter)
+	dartWant := common.ToolsDart(flutter)
 	if dartWant == "" {
 		t.Fatalf("flutter --version has no Tools line\n--- actual ---\n%s", flutter)
 	}

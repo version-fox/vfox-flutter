@@ -1,53 +1,28 @@
-package e2e
+package windows
 
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	tc "github.com/testcontainers/testcontainers-go"
+
+	"github.com/version-fox/vfox-flutter/tests/e2e/common"
 )
 
-// NOTE: keep the Flutter defaults in sync with tests/e2e/linux/setup.go.
-// The two Go modules share no config format, so the versions are duplicated
-// on purpose. Bump both together.
+// Flutter defaults live in the common package; only the Windows-specific
+// toolchain pin stays here.
 const (
-	defaultOfficialVersion = "3.47.4"
-	defaultOhosVersion     = "3.41.10-ohos-1.0.0"
 	// goWindowsVersion pins the Go toolchain MSI used to build vfox@main
 	// inside the container (was setup.ps1).
 	goWindowsVersion = "1.27.1"
 )
 
-const bogusMirror = "https://invalid.example.invalid"
-
 // pwshQuote renders a single-quoted PowerShell string literal.
 func pwshQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
-}
-
-// resolveFlutterVersion honours $FLUTTER_VERSION / $OHOS_VERSION, else the
-// defaults above (was lib.ps1 Resolve-FlutterVersion).
-func resolveFlutterVersion(t *testing.T, flavor string) string {
-	t.Helper()
-	switch flavor {
-	case "official":
-		if v := os.Getenv("FLUTTER_VERSION"); v != "" {
-			return v
-		}
-		return defaultOfficialVersion
-	case "ohos":
-		if v := os.Getenv("OHOS_VERSION"); v != "" {
-			return v
-		}
-		return defaultOhosVersion
-	default:
-		t.Fatalf("unknown flavor %s", flavor)
-		return ""
-	}
 }
 
 // releasesIndex mirrors the preflight probe for windows.
@@ -246,7 +221,7 @@ func checkBogusMirrorRejected(ctx context.Context, t *testing.T, ctr tc.Containe
 	}
 	code, out := execRun(ctx, t, ctr,
 		fmt.Sprintf("vfox install %s", pwshQuote("flutter@"+version)),
-		withEnv(box, "FLUTTER_STORAGE_BASE_URL="+bogusMirror)...)
+		withEnv(box, "FLUTTER_STORAGE_BASE_URL="+common.BogusMirror)...)
 	if code == 0 {
 		t.Fatalf("bogus mirror install unexpectedly succeeded\n--- output ---\n%s", out)
 	}
@@ -265,7 +240,7 @@ func checkBogusGithubMirrorRejected(ctx context.Context, t *testing.T, ctr tc.Co
 	}
 	code, out := execRun(ctx, t, ctr,
 		fmt.Sprintf("vfox install %s", pwshQuote("flutter@"+version)),
-		withEnv(box, "VFOX_FLUTTER_GITHUB_MIRROR="+bogusMirror)...)
+		withEnv(box, "VFOX_FLUTTER_GITHUB_MIRROR="+common.BogusMirror)...)
 	if code == 0 {
 		t.Fatalf("bogus GitHub mirror install unexpectedly succeeded\n--- output ---\n%s", out)
 	}
