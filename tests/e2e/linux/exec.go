@@ -1,27 +1,16 @@
-package e2e
+package linux
 
 import (
 	"context"
 	"io"
-	"os"
-	"strconv"
-	"strings"
 	"testing"
 	"time"
 
 	tc "github.com/testcontainers/testcontainers-go"
 	tcexec "github.com/testcontainers/testcontainers-go/exec"
-)
 
-// retryAttempts mirrors lib.sh: up to $E2E_RETRY_ATTEMPTS attempts (default 3).
-func retryAttempts() int {
-	if v, ok := os.LookupEnv("E2E_RETRY_ATTEMPTS"); ok && strings.TrimSpace(v) != "" {
-		if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil {
-			return n
-		}
-	}
-	return 3
-}
+	"github.com/version-fox/vfox-flutter/tests/e2e/common"
+)
 
 // execRun runs script via `bash -c` in the container and returns its exit
 // code with the combined stdout+stderr output. extraEnv entries ("K=V")
@@ -59,7 +48,7 @@ func execOK(ctx context.Context, t *testing.T, ctr tc.Container, script string, 
 // 6 months, so no third-party candidate qualifies.
 func execRetry(ctx context.Context, t *testing.T, ctr tc.Container, label, script string, extraEnv ...string) string {
 	t.Helper()
-	max := retryAttempts()
+	max := common.RetryAttempts()
 	var out string
 	for attempt := 1; ; attempt++ {
 		code, o := execRun(ctx, t, ctr, script, extraEnv...)

@@ -1,4 +1,4 @@
-package e2e
+package windows
 
 import (
 	"context"
@@ -9,6 +9,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 	tc "github.com/testcontainers/testcontainers-go"
+
+	"github.com/version-fox/vfox-flutter/tests/e2e/common"
 )
 
 // NOTE: the drift-warning strings asserted here are part of the plugin's
@@ -54,17 +56,12 @@ func verifySdkLayout(ctx context.Context, t *testing.T, ctr tc.Container, box sl
 	t.Log("PASS the OpenHarmony SDK is a git checkout with its engine pins tracked")
 }
 
-// manifest is the anchored-install record the plugin writes into the SDK.
-type manifest struct {
-	ExpectedHead string `json:"expected_head"`
-}
-
 // manifestAnchor reads .vfox-manifest and returns its expected_head.
 func manifestAnchor(ctx context.Context, t *testing.T, ctr tc.Container, box slotBox, sdk string) string {
 	t.Helper()
 	raw := execOK(ctx, t, ctr,
 		"Get-Content -Raw "+pwshQuote(sdk+`\.vfox-manifest`), box.vars...)
-	var m manifest
+	var m common.Manifest
 	if err := json.Unmarshal([]byte(raw), &m); err != nil {
 		t.Fatalf("the .vfox-manifest is not valid JSON: %v\n--- actual ---\n%s", err, raw)
 	}
@@ -117,21 +114,6 @@ func verifyManifestDrift(ctx context.Context, t *testing.T, ctr tc.Container, bo
 	require.NotContains(t, use(), "has drifted", "a restored SDK reports no drift")
 }
 
-// toolsDart extracts the Dart version from `flutter --version` output:
-// (($flutter -split "`n" | Where-Object { $_ -like '*Tools*' }) -split ' ')[3].
-// (Duplicated from tests/e2e/linux/verify.go; the two Go modules share no
-// helpers.)
-func toolsDart(flutterVersion string) string {
-	for _, line := range strings.Split(flutterVersion, "\n") {
-		if strings.Contains(line, "Tools") {
-			if f := strings.Fields(line); len(f) >= 4 {
-				return f[3]
-			}
-		}
-	}
-	return ""
-}
-
 // verifyToolchain boots the toolchain (pub.dev reachable) and checks the
 // dart/flutter versions agree with each other and the SDK checkout.
 func verifyToolchain(ctx context.Context, t *testing.T, ctr tc.Container, box slotBox, activation, sdk string) {
@@ -148,7 +130,7 @@ func verifyToolchain(ctx context.Context, t *testing.T, ctr tc.Container, box sl
 		"git -C "+pwshQuote(sdk)+" rev-parse HEAD", box.vars...))
 	require.Contains(t, flutter, head[:10], "flutter --version revision")
 
-	dartWant := toolsDart(flutter)
+	dartWant := common.ToolsDart(flutter)
 	require.NotEmpty(t, dartWant, "flutter --version has no Tools line:\n"+flutter)
 	require.Contains(t, dart, dartWant, "dart --version")
 }

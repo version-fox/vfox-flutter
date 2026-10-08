@@ -10,12 +10,16 @@
 #   DOCKER_SOCK="$XDG_RUNTIME_DIR/docker.sock" docker compose -f ... run --rm e2e
 #
 # Every knob below forwards only when set in the caller's env; empty means
-# "use the built-in default" (see matrix.go).
+# "use the built-in default" (see common/common.go).
+#
+# The module root is the working dir (single Go module for common + linux +
+# windows); the command targets the linux package only, because Windows
+# containers cannot run on a Linux host.
 
 services:
   e2e:
     image: golang:1.26.8
-    working_dir: /work/tests/e2e/linux
+    working_dir: /work/tests/e2e
     volumes:
       - ${DOCKER_SOCK:-/var/run/docker.sock}:/var/run/docker.sock
       - ../../..:/work
@@ -29,7 +33,6 @@ services:
       # via t.Cleanup instead; leftovers from killed runs share the
       # vfox-flutter-e2e- name prefix for easy pruning.
       TESTCONTAINERS_RYUK_DISABLED: "true"
-      ARCH: ${ARCH:-}
       E2E_MAX_JOBS: ${E2E_MAX_JOBS:-}
       VFOX_VERSION: ${VFOX_VERSION:-}
       FLAVOR: ${FLAVOR:-}
@@ -38,7 +41,7 @@ services:
       OHOS_VERSION: ${OHOS_VERSION:-}
       VFOX_FLUTTER_GITHUB_MIRROR: ${VFOX_FLUTTER_GITHUB_MIRROR:-}
       E2E_RETRY_ATTEMPTS: ${E2E_RETRY_ATTEMPTS:-}
-    command: ["go", "test", "-v", "-timeout", "55m", "-run", "TestE2E", "./..."]
+    command: ["go", "test", "-v", "-timeout", "55m", "-run", "TestE2E", "./linux"]
 
 volumes:
   e2e-go-modcache:

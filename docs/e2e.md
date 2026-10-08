@@ -24,27 +24,8 @@ DOCKER_SOCK="$XDG_RUNTIME_DIR/docker.sock" \
     docker compose -f tests/e2e/linux/compose.yaml run --rm e2e
 ```
 
-To check the `vfox` x `flavor` x `mirror` matrix expansion without
-starting containers, override the service command:
-
-```bash
-docker compose -f tests/e2e/linux/compose.yaml run --rm e2e go test -short ./...
-```
-
 On ARM64 it runs the official flavor only: OpenHarmony publishes no `linux-arm64` Dart SDK (see `docs/ohos.md`), so the
 ohos flavor cannot bootstrap there.
-
-### Run the ARM64 E2E on a x64 host
-
-To run the ARM64 E2E on an x64 host instead (emulated, much slower),
-register QEMU binfmt support with one command (re-run after each reboot) and
-override the architecture:
-
-```bash
-docker run --privileged --rm tonistiigi/binfmt --install all
-cd ./vfox-flutter/
-ARCH=arm64 docker compose -f tests/e2e/linux/compose.yaml run --rm e2e
-```
 
 ## Windows 11 Pro
 
@@ -67,7 +48,7 @@ winget install --id Microsoft.PowerShell --source winget --exact
 ```powershell
 winget install --id Git.Git --source winget --exact
 
-curl.exe -fsSL --retry 3 --retry-delay 5 --retry-all-errors `
+curl.exe -fsSL `
     "https://raw.githubusercontent.com/microsoft/Windows-Containers/Main/helpful_tools/Install-DockerCE/install-docker-ce.ps1" `
     -o ./install-docker-ce.ps1
 ```
@@ -82,7 +63,8 @@ curl.exe -fsSL --retry 3 --retry-delay 5 --retry-all-errors `
 
 ```powershell
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.docker\cli-plugins" | Out-Null
-curl.exe -fsSL --retry 3 --retry-delay 5 --retry-all-errors `
+
+curl.exe -fsSL `
     "https://github.com/docker/compose/releases/download/v5.5.1/docker-compose-windows-x86_64.exe" `
     -o "$env:USERPROFILE\.docker\cli-plugins\docker-compose.exe"
 ```
@@ -92,14 +74,7 @@ curl.exe -fsSL --retry 3 --retry-delay 5 --retry-all-errors `
 ```powershell
 git clone git@github.com:version-fox/vfox-flutter.git
 cd ./vfox-flutter/
-docker compose -f tests/e2e/windows/compose.yaml run --rm --build e2e
-```
-
-To check the `vfox` x `flavor` x `mirror` matrix expansion without
-starting containers, override the service command:
-
-```powershell
-docker compose -f tests/e2e/windows/compose.yaml run --rm e2e go test -short ./...
+pwsh -NoProfile -File .\tests\e2e\windows\run.ps1
 ```
 
 ### arm64
@@ -114,16 +89,15 @@ winget install --id Microsoft.PowerShell --source winget --exact
 
 ```powershell
 winget install --id Git.Git --source winget --exact
-# Host Go stays here: building the moby engine from source needs it. The
-# suite itself runs from a container (see below), no host Go involved.
 winget install --id GoLang.Go --source winget --exact
 git clone git@github.com:version-fox/vfox-flutter.git
 cd ./vfox-flutter/
 pwsh -NoProfile -File .\tests\e2e\windows\install-docker-arm64.ps1
 New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.docker\cli-plugins" | Out-Null
-curl.exe -fsSL --retry 3 --retry-delay 5 --retry-all-errors `
+
+curl.exe -fsSL `
     "https://github.com/docker/compose/releases/download/v5.5.1/docker-compose-windows-aarch64.exe" `
     -o "$env:USERPROFILE\.docker\cli-plugins\docker-compose.exe"
-$env:ARCH = 'arm64'
-docker compose -f tests/e2e/windows/compose.yaml run --rm --build e2e
+
+pwsh -NoProfile -File .\tests\e2e\windows\run.ps1
 ```

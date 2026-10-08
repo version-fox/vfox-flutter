@@ -1,4 +1,4 @@
-module github.com/version-fox/vfox-flutter/tests/e2e/windows
+module github.com/version-fox/vfox-flutter/tests/e2e
 
 go 1.25.0
 

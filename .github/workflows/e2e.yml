@@ -24,9 +24,6 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
-      # No host Go anywhere: the suite runs from the Compose runner service
-      # driving the runner daemon through the mounted socket (same invocation
-      # as docs/e2e.md), so CI dogfoods the documented setup.
       - run: docker compose -f tests/e2e/linux/compose.yaml run --rm e2e
 
   e2e-windows:
@@ -41,9 +38,6 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
-      # Host Go on windows-11-arm is for compiling moby only
-      # (install-docker-arm64.ps1); the suite itself runs from the Compose
-      # runner service with no host Go anywhere.
       # TODO For compiling moby only.
       # Because https://github.com/actions/runner-images/blob/win11-arm64/20260920.174/images/windows/Windows11-Arm64-Readme.md is still using `Go 1.24.13`.
       - if: matrix.runs-on == 'windows-11-arm'
@@ -53,18 +47,12 @@ jobs:
           cache: false
       - if: matrix.runs-on == 'windows-11-arm'
         run: pwsh -NoProfile -File tests/e2e/windows/install-docker-arm64.ps1
-      # windows-latest ships Docker Compose; windows-11-arm builds its engine
-      # from source with no plugin, so pin one explicitly there.
       - if: matrix.runs-on == 'windows-11-arm'
-        name: Install Compose v5.5.1 CLI plugin
+        name: Install Compose CLI plugin
         run: |
           New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.docker\cli-plugins" | Out-Null
           curl.exe -fsSL --retry 3 --retry-delay 5 --retry-all-errors "https://github.com/docker/compose/releases/download/v5.5.1/docker-compose-windows-aarch64.exe" -o "$env:USERPROFILE\.docker\cli-plugins\docker-compose.exe"
           docker compose version
-      # Both runners drive the daemon from the Compose runner service
-      # (Dockerfile-runner: servercore plus the pinned Go MSI, built for the
-      # host arch): no host Go is needed by the suite on any arch. Host Go on
-      # windows-11-arm exists only to compile moby above.
       - run: docker compose -f tests/e2e/windows/compose.yaml run --rm --build e2e
         env:
           ARCH: ${{ contains(matrix.runs-on, 'arm') && 'arm64' || 'amd64' }}

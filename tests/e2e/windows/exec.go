@@ -1,30 +1,16 @@
-package e2e
+package windows
 
 import (
 	"context"
 	"io"
-	"os"
-	"strconv"
-	"strings"
 	"testing"
 	"time"
 
 	tc "github.com/testcontainers/testcontainers-go"
 	tcexec "github.com/testcontainers/testcontainers-go/exec"
-)
 
-// retryAttempts caps exec retries; honours $E2E_RETRY_ATTEMPTS (default 3,
-// matching Invoke-WithRetry). Kept on the standard library: the established
-// retry libraries (cenkalti/backoff, avast/retry-go) have no release in the
-// last 6 months, so no third-party candidate qualifies.
-func retryAttempts() int {
-	if v, ok := os.LookupEnv("E2E_RETRY_ATTEMPTS"); ok && strings.TrimSpace(v) != "" {
-		if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil {
-			return n
-		}
-	}
-	return 3
-}
+	"github.com/version-fox/vfox-flutter/tests/e2e/common"
+)
 
 // pwshPrelude mirrors the run.ps1/lib.ps1 headers: any cmdlet error aborts
 // and native failures propagate. Without it, pwsh exits 0 despite script
@@ -62,11 +48,11 @@ func execOK(ctx context.Context, t *testing.T, ctr tc.Container, script string, 
 	return out
 }
 
-// execRetry mirrors Invoke-WithRetry: run script up to retryAttempts() times
-// with linear backoff (10s * attempt), logging each failed attempt.
+// execRetry mirrors Invoke-WithRetry: run script up to common.RetryAttempts
+// times with linear backoff (10s * attempt), logging each failed attempt.
 func execRetry(ctx context.Context, t *testing.T, ctr tc.Container, label, script string, extraEnv ...string) string {
 	t.Helper()
-	max := retryAttempts()
+	max := common.RetryAttempts()
 	var out string
 	for attempt := 1; ; attempt++ {
 		code, o := execRun(ctx, t, ctr, script, extraEnv...)

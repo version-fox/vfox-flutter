@@ -1,43 +1,14 @@
-package e2e
+package linux
 
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	tc "github.com/testcontainers/testcontainers-go"
 )
-
-// NOTE: keep in sync with tests/e2e/windows/setup.go, which duplicates these
-// defaults (the two Go modules share no config format). Bump both together.
-const (
-	defaultOfficialVersion = "3.47.4"
-	defaultOhosVersion     = "3.41.10-ohos-1.0.0"
-)
-
-// resolveFlutterVersion honours $FLUTTER_VERSION / $OHOS_VERSION, else the
-// defaults above (was config.sh resolve_flutter_version).
-func resolveFlutterVersion(t *testing.T, flavor string) string {
-	t.Helper()
-	switch flavor {
-	case "official":
-		if v := os.Getenv("FLUTTER_VERSION"); v != "" {
-			return v
-		}
-		return defaultOfficialVersion
-	case "ohos":
-		if v := os.Getenv("OHOS_VERSION"); v != "" {
-			return v
-		}
-		return defaultOhosVersion
-	default:
-		t.Fatalf("unknown flavor %s", flavor)
-		return ""
-	}
-}
 
 // releasesIndex mirrors config.sh releases_index_for_mirror for linux.
 func releasesIndex(mirror string) string {
@@ -58,7 +29,7 @@ func checkMirrorReachable(ctx context.Context, t *testing.T, ctr tc.Container, f
 }
 
 // setupVfox installs vfox (release, or builds main with the in-image Go
-// toolchain) and registers the local flutter plugin (was setup.sh).
+// toolchain) and registers the local flutter plugin.
 func setupVfox(ctx context.Context, t *testing.T, ctr tc.Container, vfoxVersion string) {
 	t.Helper()
 	work := strings.TrimSpace(execOK(ctx, t, ctr, "mktemp --directory"))

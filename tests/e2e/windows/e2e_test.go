@@ -1,10 +1,15 @@
-package e2e
+// Package windows is the Windows container E2E suite, driven entirely from
+// Go via testcontainers-go.
+//
+// TestE2E builds the image in tests/e2e/windows/Dockerfile once, then runs
+// one long-lived container per (vfox version x flavor x mirror) combination
+// and drives setup -> install -> verify through pwsh exec calls (setup.go,
+// install.go, verify.go), asserting in Go. Target-independent logic (matrix
+// expansion and friends) is reused from the common package.
+package windows
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,24 +21,15 @@ import (
 	tc "github.com/testcontainers/testcontainers-go"
 
 	client "github.com/moby/moby/client"
-)
 
-// passThroughEnvs are host env knobs the suite honours. Forwarded only when
-// set, so unset stays default. (The old e2e.ps1 only passed VFOX_VERSION,
-// FLAVOR, VFOX_E2E_SLOT and FLUTTER_STORAGE_BASE_URL into the container;
-// forwarding the rest is a strict improvement shared with the Linux suite.)
-var passThroughEnvs = []string{
-	"FLUTTER_VERSION",
-	"OHOS_VERSION",
-	"VFOX_FLUTTER_GITHUB_MIRROR",
-	"E2E_RETRY_ATTEMPTS",
-}
+	"github.com/version-fox/vfox-flutter/tests/e2e/common"
+)
 
 // TestE2E builds the image once, then runs one container per matrix combo.
 // Bounded parallelism via t.Parallel + semaphore (like E2E_MAX_JOBS).
 //
 // Full matrix runs in CI; locally scope it down, e.g.:
-// VFOX_VERSION=latest FLAVOR=official MIRROR=default E2E_MAX_JOBS=1 go test -v
+// VFOX_VERSION=latest FLAVOR=official MIRROR=default E2E_MAX_JOBS=1 go test -v ./windows/
 func TestE2E(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skip container E2E in short mode")
@@ -42,7 +38,7 @@ func TestE2E(t *testing.T) {
 	// Every container is terminated explicitly via t.Cleanup instead.
 	t.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
 
-	arch, err := detectArch()
+	arch, err := common.DetectArch()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +55,7 @@ func TestE2E(t *testing.T) {
 	ctx := context.Background()
 	buildImage(t, ctx, repoRoot, image, platform, baseImage)
 
-	combos, err := matrix()
+	combos, err := common.Matrix()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +66,7 @@ func TestE2E(t *testing.T) {
 	sem := make(chan struct{}, maxJobs())
 	for _, c := range combos {
 		c := c
-		t.Run(c.slug(), func(t *testing.T) {
+		t.Run(c.Slug(), func(t *testing.T) {
 			t.Parallel()
 			sem <- struct{}{}
 			defer func() { <-sem }()
@@ -119,34 +115,23 @@ func buildImage(t *testing.T, ctx context.Context, repoRoot, image, platform, ba
 	}
 }
 
-// containerName returns a unique container name per run: the combo slug stays
-// greppable in `docker ps`, the random suffix avoids clashes with leftovers
-// from killed runs (the old ps1 runner detached anonymous names per batch).
-func containerName(c combo) string {
-	var b [4]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		return fmt.Sprintf("vfox-flutter-e2e-%s-%d", c.slug(), time.Now().UnixNano())
-	}
-	return "vfox-flutter-e2e-" + c.slug() + "-" + hex.EncodeToString(b[:])
-}
-
 // runOne starts one long-lived container per combo and drives the whole
 // E2E flow (setup -> preflight -> install -> verify) through pwsh exec
 // calls, asserting in Go. A combo passes when every phase exits 0 and the
-// outputs carry the expected markers (same bar as the old e2e.ps1).
-func runOne(t *testing.T, ctx context.Context, image, platform string, c combo) {
+// outputs carry the expected markers.
+func runOne(t *testing.T, ctx context.Context, image, platform string, c common.Combo) {
 	t.Helper()
-	prefix := c.prefix(platform)
+	prefix := c.Prefix(platform)
 
 	env := map[string]string{
-		"VFOX_VERSION":  c.vfox,
-		"FLAVOR":        c.flavor,
-		"VFOX_E2E_SLOT": c.slug(),
+		"VFOX_VERSION":  c.Vfox,
+		"FLAVOR":        c.Flavor,
+		"VFOX_E2E_SLOT": c.Slug(),
 	}
-	if c.mirror != "default" {
-		env["FLUTTER_STORAGE_BASE_URL"] = c.mirror
+	if c.Mirror != "default" {
+		env["FLUTTER_STORAGE_BASE_URL"] = c.Mirror
 	}
-	for _, name := range passThroughEnvs {
+	for _, name := range common.PassThroughEnvs {
 		if v, ok := os.LookupEnv(name); ok && v != "" {
 			env[name] = v
 		}
@@ -166,7 +151,7 @@ func runOne(t *testing.T, ctx context.Context, image, platform string, c combo) 
 	ctr, err := provider.RunContainer(ctx, tc.ContainerRequest{
 		Image:         image,
 		ImagePlatform: platform,
-		Name:          containerName(c),
+		Name:          common.ContainerName(c.Slug()),
 		Env:           env,
 	})
 	if err != nil {
@@ -180,15 +165,15 @@ func runOne(t *testing.T, ctx context.Context, image, platform string, c combo) 
 	ctx, cancel := context.WithTimeout(ctx, 45*time.Minute)
 	defer cancel()
 
-	flavor := c.flavor
-	mirror := c.mirror
-	version := resolveFlutterVersion(t, flavor)
+	flavor := c.Flavor
+	mirror := c.Mirror
+	version := common.ResolveFlutterVersion(t, flavor)
 	procArch := procArchOfContainer(ctx, t, ctr)
-	t.Logf("=== vfox %s, flutter %s, %s, mirror %s, %s ===", c.vfox, version, flavor, mirror, procArch)
+	t.Logf("=== vfox %s, flutter %s, %s, mirror %s, %s ===", c.Vfox, version, flavor, mirror, procArch)
 
-	box := setupSlotEnv(ctx, t, ctr, c.slug())
+	box := setupSlotEnv(ctx, t, ctr, c.Slug())
 	checkMirrorReachable(ctx, t, ctr, flavor, mirror)
-	setupVfox(ctx, t, ctr, box, c.vfox)
+	setupVfox(ctx, t, ctr, box, c.Vfox)
 	checkBogusMirrorRejected(ctx, t, ctr, box, flavor, version)
 	checkBogusGithubMirrorRejected(ctx, t, ctr, box, flavor, version)
 
