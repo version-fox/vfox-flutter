@@ -12,7 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# License header check (Apache SkyWalking Eyes): Go and Lua are both covered.
+# License header check (Apache SkyWalking Eyes): Go, Lua, YAML, TOML,
+# Dockerfiles, ignore files and similar text formats are covered.
+# Some headers stay hand-written because `header fix` cannot place them:
+# go.mod and .gitattributes have no comment style upstream, the Windows
+# Dockerfiles must keep `# escape=` on line 1 (their headers sit right
+# below it), and the fixer only recognises the exact name `Dockerfile`,
+# not Dockerfile-runner. The checker still verifies them all.
 # PowerShell is check-only here (no `<# ... #>` fix support upstream):
 # tests/e2e/windows/*.ps1 is fixed and checked with addlicense instead (see
 # the addlicense step in .github/workflows/license.yml and docs/e2e.md).
@@ -38,18 +44,11 @@ header:
       limitations under the License.
 
   paths-ignore:
-    # Documentation and data files carry no license header.
+    # Files without the header by design; go.sum cannot take one at all (the
+    # go tool parses every non-empty line as a hash record).
     - '**/*.md'
-    - '**/*.yaml'
-    - '**/*.yml'
     - '**/*.json'
-    - '**/*.toml'
-    - '**/go.mod'
     - '**/go.sum'
-    - '**/Dockerfile*'
-    - '.gitignore'
-    - '.gitattributes'
-    - '.dockerignore'
     - '.tool-versions'
     - 'LICENSE'
     # Plain-text template for addlicense (no comment markers in it; keep its

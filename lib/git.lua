@@ -23,8 +23,17 @@ local GH_BASE = "https://github.com/"
 
 local M = {}
 
+-- Quote a path for the platform shell. On Windows the shell is cmd.exe:
+-- vfox main passes the command line through verbatim (the fix for
+-- version-fox/vfox#712), so a path containing spaces (C:\Users\John
+-- Doe\.vfox) is safe in double quotes. Paths that need no quoting stay
+-- bare: released vfox builds re-quote the command line themselves and
+-- mangle embedded double quotes, and they never supported spaces anyway.
 local function quote(value)
     if RUNTIME.osType == "windows" then
+        if value:find("%s") then
+            return '"' .. value .. '"'
+        end
         return value
     end
     return "'" .. value:gsub("'", "'\\''") .. "'"

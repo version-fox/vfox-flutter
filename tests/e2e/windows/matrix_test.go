@@ -15,6 +15,7 @@
 package windows
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -35,6 +36,21 @@ func TestReleasesIndex(t *testing.T) {
 	want := "https://storage.flutter-io.cn/flutter_infra_release/releases/releases_windows.json"
 	if got != want {
 		t.Errorf("releasesIndex = %q, want %q", got, want)
+	}
+}
+
+func TestVfoxHome(t *testing.T) {
+	profile := `C:\Users\ContainerAdministrator`
+	if got, want := vfoxHome(profile, "latest-official-default", "latest"),
+		`C:\Users\ContainerAdministrator\vfox-e2e-runs\latest-official-default\.vfox`; got != want {
+		t.Errorf("vfoxHome(latest) = %q, want %q", got, want)
+	}
+	got := vfoxHome(profile, "main-official-default", "main")
+	if got != spacedVfoxHome {
+		t.Errorf("vfoxHome(main) = %q, want %q", got, spacedVfoxHome)
+	}
+	if !strings.Contains(got, " ") {
+		t.Errorf("vfoxHome(main) = %q, want a path containing a space", got)
 	}
 }
 

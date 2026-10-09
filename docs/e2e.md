@@ -42,6 +42,13 @@ needs an ARM64 host (a Copilot+ PC or the `windows-11-arm` CI runner).
 The `windows-11-arm` runner has no Windows Hypervisor Platform feature,
 so Hyper-V isolation is unavailable; process isolation needs only the Containers feature.
 
+The `main` combos run with `VFOX_HOME` pointing inside a path containing a
+space (`C:\Users\John Doe\.vfox`), mirroring
+[issue #33](https://github.com/version-fox/vfox-flutter/issues/33). Only vfox
+`main` carries the fix for such paths
+([vfox#712](https://github.com/version-fox/vfox/pull/712)), so `latest`
+combinations still run with an unspaced home.
+
 ### x64
 
 1. Execute in Windows PowerShell 5.1,
