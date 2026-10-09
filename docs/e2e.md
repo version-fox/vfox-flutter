@@ -67,14 +67,10 @@ New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.docker\cli-plugins"
 curl.exe -fsSL `
     "https://github.com/docker/compose/releases/download/v5.5.1/docker-compose-windows-x86_64.exe" `
     -o "$env:USERPROFILE\.docker\cli-plugins\docker-compose.exe"
-```
 
-5. Execute in PowerShell 7,
-
-```powershell
 git clone git@github.com:version-fox/vfox-flutter.git
 cd ./vfox-flutter/
-pwsh -NoProfile -File .\tests\e2e\windows\run.ps1
+docker compose -f tests/e2e/windows/compose.amd64.yaml run --rm --build e2e
 ```
 
 ### arm64
@@ -99,5 +95,5 @@ curl.exe -fsSL `
     "https://github.com/docker/compose/releases/download/v5.5.1/docker-compose-windows-aarch64.exe" `
     -o "$env:USERPROFILE\.docker\cli-plugins\docker-compose.exe"
 
-pwsh -NoProfile -File .\tests\e2e\windows\run.ps1
+docker compose -f tests/e2e/windows/compose.arm64.yaml run --rm --build e2e
 ```

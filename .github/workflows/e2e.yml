@@ -34,6 +34,11 @@ jobs:
       matrix:
         # TODO See https://github.com/actions/runner-images/issues/13729
         runs-on: [windows-latest, windows-11-arm]
+        include:
+          - runs-on: windows-latest
+            compose: tests/e2e/windows/compose.amd64.yaml
+          - runs-on: windows-11-arm
+            compose: tests/e2e/windows/compose.arm64.yaml
     runs-on: ${{ matrix.runs-on }}
     timeout-minutes: 60
     steps:
@@ -52,6 +57,4 @@ jobs:
           New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.docker\cli-plugins" | Out-Null
           curl.exe -fsSL "https://github.com/docker/compose/releases/download/v5.5.1/docker-compose-windows-aarch64.exe" -o "$env:USERPROFILE\.docker\cli-plugins\docker-compose.exe"
           docker compose version
-      - run: docker compose -f tests/e2e/windows/compose.yaml run --rm --build e2e
-        env:
-          ARCH: ${{ contains(matrix.runs-on, 'arm') && 'arm64' || 'amd64' }}
+      - run: docker compose -f ${{ matrix.compose }} run --rm --build e2e

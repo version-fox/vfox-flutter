@@ -187,7 +187,7 @@ func setupVfox(ctx context.Context, t *testing.T, ctr tc.Container, box slotBox,
 
 // fetchActivation captures `vfox activate pwsh` once per container; the
 // output is prepended to every later script via activated(), since each exec
-// starts a fresh process (same reason run.ps1 dot-sourced it per process).
+// starts a fresh process and the $env: assignments cannot persist.
 func fetchActivation(ctx context.Context, t *testing.T, ctr tc.Container, box slotBox) string {
 	t.Helper()
 	out := execOK(ctx, t, ctr, "vfox activate pwsh", box.vars...)
