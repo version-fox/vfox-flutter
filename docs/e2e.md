@@ -6,8 +6,14 @@ each `vfox` x `flavor` x `mirror` combination gets its own throwaway container.
 
 ## Ubuntu 26.04.1
 
-Only Docker Engine (in either rootful or rootless mode) is required on the
-host. Execute in Bash,
+Only Docker Engine (in either rootful or rootless mode) is required on the host. 
+On ARM64 it runs the official flavor only: 
+OpenHarmony publishes no `linux-arm64` Dart SDK (see `docs/ohos.md`), 
+so the ohos flavor cannot bootstrap there.
+
+### rootful Docker
+
+Execute in Bash,
 
 ```bash
 sudo apt install --assume-yes git
@@ -16,16 +22,17 @@ cd ./vfox-flutter/
 docker compose -f tests/e2e/linux/compose.yaml run --rm e2e
 ```
 
+### rootless Docker
+
 With rootless Docker the daemon socket lives elsewhere; point `DOCKER_SOCK`
 at it instead:
 
 ```bash
-DOCKER_SOCK="$XDG_RUNTIME_DIR/docker.sock" \
-    docker compose -f tests/e2e/linux/compose.yaml run --rm e2e
+sudo apt install --assume-yes git
+git clone git@github.com:version-fox/vfox-flutter.git
+cd ./vfox-flutter/
+DOCKER_SOCK="$XDG_RUNTIME_DIR/docker.sock" docker compose -f tests/e2e/linux/compose.yaml run --rm e2e
 ```
-
-On ARM64 it runs the official flavor only: OpenHarmony publishes no `linux-arm64` Dart SDK (see `docs/ohos.md`), so the
-ohos flavor cannot bootstrap there.
 
 ## Windows 11 Pro
 
@@ -47,6 +54,7 @@ winget install --id Microsoft.PowerShell --source winget --exact
 
 ```powershell
 winget install --id Git.Git --source winget --exact
+# Configure Git appropriately.
 
 curl.exe -fsSL `
     "https://raw.githubusercontent.com/microsoft/Windows-Containers/Main/helpful_tools/Install-DockerCE/install-docker-ce.ps1" `
@@ -85,6 +93,7 @@ winget install --id Microsoft.PowerShell --source winget --exact
 
 ```powershell
 winget install --id Git.Git --source winget --exact
+# Configure Git appropriately.
 winget install --id GoLang.Go --source winget --exact
 git clone git@github.com:version-fox/vfox-flutter.git
 cd ./vfox-flutter/
@@ -96,4 +105,24 @@ curl.exe -fsSL `
     -o "$env:USERPROFILE\.docker\cli-plugins\docker-compose.exe"
 
 docker compose -f tests/e2e/windows/compose.arm64.yaml run --rm --build e2e
+```
+
+## Local checks
+
+Execute in Bash on Ubuntu before pushing.
+
+```bash
+docker run --rm -v "$PWD:/work" -w /work apache/skywalking-eyes:0.9.0 header check
+docker run --rm -v "$PWD:/work" -w /work apache/skywalking-eyes:0.9.0 header fix
+docker run --rm -v "$PWD:/src" ghcr.io/google/addlicense:v1.2.0 -check -f .license.tpl tests/e2e/windows/*.ps1
+docker run --rm -v "$PWD:/src" ghcr.io/google/addlicense:v1.2.0 -f .license.tpl tests/e2e/windows/*.ps1
+
+cd tests/e2e
+go test -short ./...
+test -z "$(gofmt -l .)"
+go vet ./...
+cd ../..
+
+stylua --check .
+mise x aqua:LuaLS/lua-language-server@3.19.1 -- lua-language-server --check . --checklevel=Warning
 ```
