@@ -166,5 +166,6 @@ func runOne(t *testing.T, ctx context.Context, image, platform string, c common.
 	sdk := sdkDir(ctx, t, ctr)
 	verifySdkLayout(ctx, t, ctr, flavor, sdk)
 	verifyManifestDrift(ctx, t, ctr, version, sdk)
+	verifyFirstRunMatchesOfficial(ctx, t, ctr, flavor, sdk)
 	verifyToolchain(ctx, t, ctr, sdk)
 }

@@ -60,10 +60,7 @@ local function hasGitDir(path)
 end
 
 local function isEmptyTable(table)
-    for _ in pairs(table) do
-        return false
-    end
-    return true
+    return next(table) == nil
 end
 
 local M = {}
@@ -177,6 +174,46 @@ function M.checkDrift(sdkRoot)
         return true, "head-drifted"
     end
     return false, "ok"
+end
+
+-- vfox extracts archives with Go's archive/tar (see
+-- internal/shared/util/decompressor.go), which creates files with the
+-- extraction time instead of the mtime stored in the archive. The official
+-- `tar -xf` flow preserves mtimes, where
+-- packages/flutter_tools/pubspec.lock is newer than pubspec.yaml. After a
+-- vfox install the two files share the extraction time and whichever was
+-- extracted last (currently pubspec.yaml) looks newer, so
+-- bin/internal/shared.sh's `upgrade_flutter` sees
+-- `pubspec.yaml -nt pubspec.lock` and rebuilds the Flutter tool on first
+-- run (`Building flutter tool...`), deleting `version` and
+-- `bin/cache/flutter.version.json` and forcing a `fetch --tags` version
+-- lookup. Rewriting pubspec.lock bumps its mtime past pubspec.yaml and
+-- restores the official first-run behavior (no rebuild).
+function M.touchPubspecLock(sdkRoot)
+    local root = M.gitRoot(sdkRoot)
+    if root == nil then
+        if type(sdkRoot) ~= "string" or sdkRoot == "" then
+            return false
+        end
+        root = sdkRoot
+    end
+    local lockPath = joinPath(joinPath(joinPath(root, "packages"), "flutter_tools"), "pubspec.lock")
+    local f = io.open(lockPath, "rb")
+    if f == nil then
+        return false
+    end
+    local content = f:read("*a")
+    f:close()
+    if content == nil then
+        return false
+    end
+    local w = io.open(lockPath, "wb")
+    if w == nil then
+        return false
+    end
+    w:write(content)
+    w:close()
+    return true
 end
 
 return M

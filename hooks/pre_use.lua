@@ -2,14 +2,15 @@ local manifest = require("manifest")
 
 local REASON = {
     ["head-drifted"] = "the SDK's git HEAD no longer matches the commit vfox installed",
-    ["sdk-no-longer-git"] = "vfox can no longer read the SDK's git HEAD (its .git may be broken)"
+    ["sdk-no-longer-git"] = "vfox can no longer read the SDK's git HEAD (its .git may be broken)",
 }
 
 local function printDriftWarning(sdkPath, version, manifestInfo, currentHead, reason)
     local installedVersion = (manifestInfo and manifestInfo.version) or version
     local expectedHead = (manifestInfo and manifestInfo.expected_head) or "unknown"
-    io.write(string.format(
-        [[
+    io.write(
+        string.format(
+            [[
 Warning: flutter SDK at %s has drifted from the version vfox installed.
   vfox installed: flutter@%s (git HEAD %s)
   current git HEAD: %s
@@ -29,16 +30,17 @@ To upgrade to a newer version, use vfox directly:
   vfox install flutter@<new-version>
   vfox use     flutter@<new-version>
 ]],
-        sdkPath,
-        installedVersion,
-        expectedHead,
-        currentHead or "unknown",
-        REASON[reason] or reason,
-        version,
-        version,
-        version,
-        version
-    ))
+            sdkPath,
+            installedVersion,
+            expectedHead,
+            currentHead or "unknown",
+            REASON[reason] or reason,
+            version,
+            version,
+            version,
+            version
+        )
+    )
 end
 
 function PLUGIN:PreUse(ctx)

@@ -20,7 +20,6 @@ function getReleasesUrl(osType)
     return getStorageBaseUrl() .. "/flutter_infra_release/releases/releases_" .. osType .. ".json"
 end
 
-
 function getOsTypeAndArch()
     local osType = RUNTIME.osType
     local archType = RUNTIME.archType
@@ -35,7 +34,8 @@ function getOsTypeAndArch()
         error("flutter does not support" .. archType .. "architecture")
     end
     return {
-        osType = osType, archType = archType
+        osType = osType,
+        archType = archType,
     }
 end
 

@@ -16,7 +16,7 @@ function PLUGIN:PreInstall(ctx)
     local channelKey
     if arg == "beta" or arg == "dev" or arg == "stable" then
         local resp, err = http.get({
-            url = getReleasesUrl(platform.osType)
+            url = getReleasesUrl(platform.osType),
         })
         if err ~= nil or resp.status_code ~= 200 then
             error("get version failed: " .. tostring(err) .. " (status " .. tostring(resp and resp.status_code) .. ")")
@@ -36,15 +36,14 @@ function PLUGIN:PreInstall(ctx)
         return {
             version = versionName,
             url = info.url,
-            sha256 = info.sha256
+            sha256 = info.sha256,
         }
     end
 
     local legacy
     for _, info in ipairs(self:Available({})) do
         local version, arch = splitVersionAndArch(info.version)
-        local matches = channelKey and info.key == channelKey or
-            (channelKey == nil and version == arg)
+        local matches = channelKey and info.key == channelKey or (channelKey == nil and version == arg)
         if matches then
             if arch == targetArch then
                 return package(info, version)
@@ -65,6 +64,7 @@ function PLUGIN:PostInstall(ctx)
     end
     if sdk.path ~= nil and sdk.path ~= "" then
         pcall(manifest.write, sdk.path, sdk)
+        pcall(manifest.touchPubspecLock, sdk.path)
     end
     if ohos.isOhosVersion(sdk.version) then
         ohos.clean(sdk.version)

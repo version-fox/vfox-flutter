@@ -38,8 +38,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
-      # TODO For compiling moby only.
-      # Because https://github.com/actions/runner-images/blob/win11-arm64/20260920.174/images/windows/Windows11-Arm64-Readme.md is still using `Go 1.24.13`.
+      # TODO For compiling moby only. Because https://github.com/actions/runner-images/blob/win11-arm64/20260920.174/images/windows/Windows11-Arm64-Readme.md is still using `Go 1.24.13`.
       - if: matrix.runs-on == 'windows-11-arm'
         uses: actions/setup-go@v7
         with:
@@ -51,7 +50,7 @@ jobs:
         name: Install Compose CLI plugin
         run: |
           New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.docker\cli-plugins" | Out-Null
-          curl.exe -fsSL --retry 3 --retry-delay 5 --retry-all-errors "https://github.com/docker/compose/releases/download/v5.5.1/docker-compose-windows-aarch64.exe" -o "$env:USERPROFILE\.docker\cli-plugins\docker-compose.exe"
+          curl.exe -fsSL "https://github.com/docker/compose/releases/download/v5.5.1/docker-compose-windows-aarch64.exe" -o "$env:USERPROFILE\.docker\cli-plugins\docker-compose.exe"
           docker compose version
       - run: docker compose -f tests/e2e/windows/compose.yaml run --rm --build e2e
         env:

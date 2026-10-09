@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 	"testing"
-	"time"
 
 	tc "github.com/testcontainers/testcontainers-go"
 	tcexec "github.com/testcontainers/testcontainers-go/exec"
@@ -42,31 +41,14 @@ func execOK(ctx context.Context, t *testing.T, ctr tc.Container, script string, 
 	return out
 }
 
-// execRetry keeps the old lib.sh retry semantics (linear 10s*attempt backoff,
-// per-attempt logging) with the standard library only: the established retry
-// libraries (cenkalti/backoff, avast/retry-go) have no release in the last
-// 6 months, so no third-party candidate qualifies.
+// execRetry runs script through the shared common.Retry helper (linear
+// 10s*attempt backoff, per-attempt logging), preserving the old lib.sh
+// retry semantics without duplicating the loop per platform.
 func execRetry(ctx context.Context, t *testing.T, ctr tc.Container, label, script string, extraEnv ...string) string {
 	t.Helper()
-	max := common.RetryAttempts()
-	var out string
-	for attempt := 1; ; attempt++ {
-		code, o := execRun(ctx, t, ctr, script, extraEnv...)
-		out = o
-		if code == 0 {
-			return out
-		}
-		if attempt >= max {
-			t.Fatalf("%s failed after %d attempt(s) (exit %d)\n--- output ---\n%s", label, attempt, code, out)
-		}
-		t.Logf("retrying %s, attempt %d exited %d", label, attempt, code)
-		t.Logf("--- output ---\n%s", out)
-		select {
-		case <-ctx.Done():
-			t.Fatalf("%s: %v", label, ctx.Err())
-		case <-time.After(time.Duration(10*attempt) * time.Second):
-		}
-	}
+	return common.Retry(ctx, t, label, func() (int, string) {
+		return execRun(ctx, t, ctr, script, extraEnv...)
+	})
 }
 
 // activated prefixes script with the vfox env setup, the equivalent of the
