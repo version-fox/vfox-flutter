@@ -1,6 +1,7 @@
-# Host-side runner for the Windows container E2E suite (see docs/e2e.md).
+# Host-side runner for the Windows container E2E suite on amd64 hosts
+# (see docs/e2e.md).
 #
-#   docker compose -f tests/e2e/windows/compose.yaml run --rm --build e2e
+#   docker compose -f tests/e2e/windows/compose.amd64.yaml run --rm --build e2e
 #
 # The host requirement is Docker plus the Compose v5 plugin (installed once
 # per machine, see docs/e2e.md); Go never touches the host, so it cannot
@@ -24,7 +25,7 @@ services:
       context: ../../..
       dockerfile: tests/e2e/windows/Dockerfile-runner
       args:
-        BASE_IMAGE: mcr.microsoft.com/windows/servercore:ltsc2025-KB5122871-${ARCH:-amd64}
+        BASE_IMAGE: mcr.microsoft.com/windows/servercore:ltsc2025-KB5122871-amd64
     image: vfox-flutter/e2e-runner:1.26.8
     working_dir: C:/work/tests/e2e
     volumes:

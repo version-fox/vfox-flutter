@@ -11,7 +11,7 @@ import (
 	"github.com/version-fox/vfox-flutter/tests/e2e/common"
 )
 
-// pwshPrelude mirrors the run.ps1/lib.ps1 headers: any cmdlet error aborts
+// pwshPrelude enforces strict error handling: any cmdlet error aborts
 // and native failures propagate. Without it, pwsh exits 0 despite script
 // errors (non-terminating by default) and execOK would pass silently.
 const pwshPrelude = "$ErrorActionPreference = 'Stop'; $PSNativeCommandUseErrorActionPreference = $true;"
