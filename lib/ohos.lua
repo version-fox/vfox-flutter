@@ -59,7 +59,7 @@ function M.list()
                 version = version,
                 url = CLONE_URL:format(REPO),
                 key = version,
-                note = NOTE
+                note = NOTE,
             })
         end
     end
@@ -73,8 +73,7 @@ function M.checkout(version, requestedArch)
     local commit
     local body, err = releases()
     if body == nil then
-        error("OpenHarmony releases are unavailable from " .. RELEASES_URL:format(REPO)
-            .. ": " .. tostring(err))
+        error("OpenHarmony releases are unavailable from " .. RELEASES_URL:format(REPO) .. ": " .. tostring(err))
     end
     for _, info in ipairs(body) do
         if info.tag_name == version then
@@ -106,7 +105,7 @@ function M.checkout(version, requestedArch)
     return {
         version = version,
         url = dir,
-        note = NOTE
+        note = NOTE,
     }
 end
 

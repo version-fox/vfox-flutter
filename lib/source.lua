@@ -21,8 +21,7 @@ end
 function M.list(releases)
     local result = {}
     for _, info in ipairs(releases or {}) do
-        if type(info.version) == "string" and string.sub(info.version, 1, 1) ~= "v"
-            and info.dart_sdk_arch == "x64" then
+        if type(info.version) == "string" and string.sub(info.version, 1, 1) ~= "v" and info.dart_sdk_arch == "x64" then
             table.insert(result, {
                 version = info.version .. "-arm64",
                 url = M.repoUrl(),
@@ -32,9 +31,9 @@ function M.list(releases)
                 addition = {
                     {
                         name = "dart",
-                        version = info.dart_sdk_version
-                    }
-                }
+                        version = info.dart_sdk_version,
+                    },
+                },
             })
         end
     end
@@ -73,7 +72,7 @@ function M.checkout(baseVersion, versionName)
     end
     return {
         version = versionName,
-        url = dir
+        url = dir,
     }
 end
 

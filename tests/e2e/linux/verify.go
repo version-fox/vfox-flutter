@@ -94,6 +94,28 @@ func verifyManifestDrift(ctx context.Context, t *testing.T, ctr tc.Container, ve
 	require.NotContains(t, use(), "has drifted", "a restored SDK reports no drift")
 }
 
+// verifyFirstRunMatchesOfficial proves a freshly installed archive SDK
+// behaves like the official tarball flow from issue #37: the first flutter
+// invocation must not rebuild the tool (`Building flutter tool...`).
+// Source installs (no prebuilt flutter_tools.snapshot, e.g. linux/arm64)
+// bootstrap on first run by design, so they skip the rebuild assertion;
+// other flavors skip entirely. Must run as the first flutter invocation:
+// verifyToolchain boots the toolchain afterwards.
+func verifyFirstRunMatchesOfficial(ctx context.Context, t *testing.T, ctr tc.Container, flavor, sdk string) {
+	t.Helper()
+	if flavor != "official" {
+		return
+	}
+	if code, _ := execRun(ctx, t, ctr, fmt.Sprintf("test -f %q/bin/cache/flutter_tools.snapshot", sdk)); code != 0 {
+		t.Log("SKIP first-run rebuild check: no prebuilt flutter_tools.snapshot (source install)")
+		return
+	}
+	out := execRetry(ctx, t, ctr, "flutter --disable-analytics", activated("flutter --disable-analytics"))
+	require.Contains(t, out, "Analytics reporting disabled", "flutter --disable-analytics")
+	require.NotContains(t, out, "Building flutter tool", "a fresh archive SDK must not rebuild the Flutter tool (issue #37)")
+	t.Log("PASS the first flutter run matches the official install (no tool rebuild)")
+}
+
 // verifyToolchain boots the toolchain (pub.dev reachable) and checks the
 // dart/flutter versions agree with each other and the SDK checkout.
 func verifyToolchain(ctx context.Context, t *testing.T, ctr tc.Container, sdk string) {

@@ -42,9 +42,9 @@ function PLUGIN:Available(ctx)
             addition = {
                 {
                     name = "dart",
-                    version = info.dart_sdk_version
-                }
-            }
+                    version = info.dart_sdk_version,
+                },
+            },
         })
     end
     for _, info in ipairs(ohos.list()) do

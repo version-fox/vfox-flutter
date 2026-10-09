@@ -114,6 +114,13 @@ func verifyManifestDrift(ctx context.Context, t *testing.T, ctr tc.Container, bo
 	require.NotContains(t, use(), "has drifted", "a restored SDK reports no drift")
 }
 
+// NOTE: there is deliberately no first-run rebuild check on Windows.
+// Issue #37 is Linux-specific: the Linux tarball ships a flutter_tools.stamp
+// matching its git HEAD, so the official first run skips the tool rebuild.
+// The Windows release zip instead ships a stale stamp (e.g. 3.47.5 carries
+// "fa78ae3..." while its HEAD is 6a19cca...), so the official Windows
+// first run always rebuilds too and vfox already matches it.
+
 // verifyToolchain boots the toolchain (pub.dev reachable) and checks the
 // dart/flutter versions agree with each other and the SDK checkout.
 func verifyToolchain(ctx context.Context, t *testing.T, ctr tc.Container, box slotBox, activation, sdk string) {

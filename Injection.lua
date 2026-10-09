@@ -12,4 +12,3 @@ RUNTIME = {
     --- vfox runtime version
     version = "",
 }
-

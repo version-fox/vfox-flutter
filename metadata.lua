@@ -13,7 +13,6 @@ PLUGIN.license = "Apache 2.0"
 --- Plugin description
 PLUGIN.description = "Flutter plugin, https://flutter.dev"
 
-
 --- !!! OPTIONAL !!!
 --[[
 NOTE:

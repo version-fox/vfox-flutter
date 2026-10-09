@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 	"testing"
-	"time"
 
 	tc "github.com/testcontainers/testcontainers-go"
 	tcexec "github.com/testcontainers/testcontainers-go/exec"
@@ -48,27 +47,12 @@ func execOK(ctx context.Context, t *testing.T, ctr tc.Container, script string, 
 	return out
 }
 
-// execRetry mirrors Invoke-WithRetry: run script up to common.RetryAttempts
-// times with linear backoff (10s * attempt), logging each failed attempt.
+// execRetry runs script through the shared common.Retry helper (linear
+// 10s*attempt backoff, per-attempt logging), preserving the old
+// Invoke-WithRetry semantics without duplicating the loop per platform.
 func execRetry(ctx context.Context, t *testing.T, ctr tc.Container, label, script string, extraEnv ...string) string {
 	t.Helper()
-	max := common.RetryAttempts()
-	var out string
-	for attempt := 1; ; attempt++ {
-		code, o := execRun(ctx, t, ctr, script, extraEnv...)
-		out = o
-		if code == 0 {
-			return out
-		}
-		if attempt >= max {
-			t.Fatalf("%s failed after %d attempt(s) (exit %d)\n--- output ---\n%s", label, attempt, code, out)
-		}
-		t.Logf("retrying %s, attempt %d exited %d", label, attempt, code)
-		t.Logf("--- output ---\n%s", out)
-		select {
-		case <-ctx.Done():
-			t.Fatalf("%s: %v", label, ctx.Err())
-		case <-time.After(time.Duration(10*attempt) * time.Second):
-		}
-	}
+	return common.Retry(ctx, t, label, func() (int, string) {
+		return execRun(ctx, t, ctr, script, extraEnv...)
+	})
 }
