@@ -32,7 +32,23 @@ const (
 	// goWindowsVersion pins the Go toolchain MSI used to build vfox@main
 	// inside the container (was setup.ps1).
 	goWindowsVersion = "1.27.1"
+
+	// spacedVfoxHome is the default vfox home of a Windows account whose
+	// name contains a space, the layout reported in
+	// https://github.com/version-fox/vfox-flutter/issues/33 .
+	spacedVfoxHome = `C:\Users\John Doe\.vfox`
 )
+
+// vfoxHome returns the $VFOX_HOME for a combo. The fix for Windows homes
+// containing a space (https://github.com/version-fox/vfox/pull/712) is on
+// vfox main only: released builds still fail on such paths, so only main
+// runs against spacedVfoxHome while the others keep an unspaced slot home.
+func vfoxHome(userProfile, slot, vfoxVersion string) string {
+	if vfoxVersion == "main" {
+		return spacedVfoxHome
+	}
+	return userProfile + `\vfox-e2e-runs\` + slot + `\.vfox`
+}
 
 // pwshQuote renders a single-quoted PowerShell string literal.
 func pwshQuote(s string) string {
@@ -79,14 +95,16 @@ type slotBox struct {
 }
 
 // setupSlotEnv replicates the slot isolation header of setup.ps1:
-// USERPROFILE/VFOX_HOME/TEMP/TMP point under vfox-e2e-runs\<slot> so
-// parallel combos on one daemon never share vfox state.
-func setupSlotEnv(ctx context.Context, t *testing.T, ctr tc.Container, slot string) slotBox {
+// USERPROFILE/TEMP/TMP point under vfox-e2e-runs\<slot>, while VFOX_HOME is
+// a sibling .vfox (spacedVfoxHome for main), so parallel combos on one
+// daemon never share vfox state.
+func setupSlotEnv(ctx context.Context, t *testing.T, ctr tc.Container, slot, vfoxVersion string) slotBox {
 	t.Helper()
 	userProfile := strings.TrimSpace(execOK(ctx, t, ctr, "$env:USERPROFILE"))
 	containerPath := strings.TrimSpace(execOK(ctx, t, ctr, "$env:PATH"))
 	procArch := strings.TrimSpace(execOK(ctx, t, ctr, "$env:PROCESSOR_ARCHITECTURE"))
 
+	home := vfoxHome(userProfile, slot, vfoxVersion)
 	box := slotBox{slot: slot}
 	box.slotRoot = userProfile + `\vfox-e2e-runs\` + slot
 	box.tmp = box.slotRoot + `\tmp`
@@ -95,7 +113,7 @@ func setupSlotEnv(ctx context.Context, t *testing.T, ctr tc.Container, slot stri
 	box.pluginZw = box.workDir + `\flutter.zip`
 	box.vars = []string{
 		"USERPROFILE=" + box.slotRoot,
-		"VFOX_HOME=" + box.slotRoot + `\.vfox`,
+		"VFOX_HOME=" + home,
 		"TEMP=" + box.tmp,
 		"TMP=" + box.tmp,
 		"PATH=" + box.workDir + ";" + containerPath,
@@ -103,9 +121,10 @@ func setupSlotEnv(ctx context.Context, t *testing.T, ctr tc.Container, slot stri
 
 	execOK(ctx, t, ctr, fmt.Sprintf(
 		"New-Item -ItemType Directory -Force -Path %s | Out-Null; "+
+			"New-Item -ItemType Directory -Force -Path %s | Out-Null; "+
 			"New-Item -ItemType Directory -Force -Path %s | Out-Null",
-		pwshQuote(box.tmp), pwshQuote(box.workDir)))
-	t.Logf("PASS slot %s isolated at %s (arch %s)", slot, box.slotRoot, procArch)
+		pwshQuote(box.tmp), pwshQuote(box.workDir), pwshQuote(home)))
+	t.Logf("PASS slot %s isolated at %s (vfox home %s, arch %s)", slot, box.slotRoot, home, procArch)
 	return box
 }
 

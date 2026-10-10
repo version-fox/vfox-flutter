@@ -27,14 +27,17 @@ local function joinPath(a, b)
     return a .. sep() .. b
 end
 
--- vfox feeds command strings to cmd.exe /c on Windows. Go has to re-quote the
--- whole command line, which turns a double quote into \" so cmd.exe reads a
--- quoted path back as the volume-relative path \path\ and rejects it with
--- "The filename, directory name, or volume label syntax is incorrect." Match
--- lib/git.lua and pass paths unquoted there; a path with a space then simply
--- skips the drift check instead of breaking vfox use.
+-- Quote a path for the platform shell. On Windows the shell is cmd.exe:
+-- vfox main passes the command line through verbatim (the fix for
+-- version-fox/vfox#712), so a path containing spaces (C:\Users\John
+-- Doe\.vfox) is safe in double quotes. Paths that need no quoting stay
+-- bare: released vfox builds re-quote the command line themselves and
+-- mangle embedded double quotes, and they never supported spaces anyway.
 local function quote(value)
     if RUNTIME.osType == "windows" then
+        if value:find("%s") then
+            return '"' .. value .. '"'
+        end
         return value
     end
     return "'" .. value:gsub("'", "'\\''") .. "'"
