@@ -47,8 +47,8 @@ import (
 //	simulating a new terminal tab).
 //
 // The test name starts with TestE2E so the existing CI command
-// (`go test -run TestE2E ./linux`, see tests/e2e/linux/compose.yaml) picks
-// it up without extra flags. It is skipped in `-short` mode like TestE2E.
+// (`go test -run TestE2E ./linux`, see docs/e2e.md) picks it up without
+// extra flags. It is skipped in `-short` mode like TestE2E.
 
 const (
 	zshBrewTester  = "tester"
