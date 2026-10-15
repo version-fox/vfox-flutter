@@ -2,42 +2,92 @@
 
 The offline Lua hook tests (`tests/hooks_test.lua`) run in the **Test Plugin** workflow.
 The end-to-end suite runs in containers against real vfox on Linux and Windows;
-each `vfox` x `flavor` x `mirror` combination gets its own throwaway container.
+each `vfox` x `flavor` x `mirror` combination gets its own throwaway
+container. On Linux, CI runs the suite natively on the stock runners (Docker
+plus Go from `actions/setup-go`), the way the repository dev container
+reproduces it locally. On Windows it runs through a Docker Compose runner
+image, since dev containers cannot host Windows container images (see below).
 
-## Ubuntu 26.04.1
+## Dev container
 
-Only Docker Engine (in either rootful or rootless mode) is required on the host. 
-On ARM64 it runs the official flavor only: 
-OpenHarmony publishes no `linux-arm64` Dart SDK (see `docs/ohos.md`), 
-so the ohos flavor cannot bootstrap there.
+`.devcontainer/` opens a Linux development environment that works on all four
+host platforms:
 
-### rootful Docker
+| Host                  | How the dev container runs                     |
+| --------------------- | ---------------------------------------------- |
+| Linux amd64 / arm64   | natively                                       |
+| Windows amd64 / arm64 | Docker Desktop in Linux-container mode (WSL 2) |
 
-Execute in Bash,
+It carries Go 1.26.8 (the version CI installs), the Docker CLI, stylua,
+lua-language-server, and the license tools — all pinned to the versions in
+`.github/workflows/lint.yml` and `license.yml` — and mounts the host Docker
+daemon socket. The suites then run testcontainers against that daemon
+(Docker-out-of-Docker), spawning the same target containers a native CI
+runner spawns; this is deliberately not Docker-in-Docker, so image cache and
+networking stay the host's. The image needs no workspace files, so the build
+context stays at `.devcontainer/`; `postCreateCommand` warms the Go module
+cache for `tests/e2e` so the first test run does not stop to download.
+
+Open it with any Dev Containers spec tool — **Dev Containers: Reopen in
+Container** in VS Code/Cursor, or the CLI:
 
 ```bash
-sudo apt install --assume-yes git
-git clone git@github.com:version-fox/vfox-flutter.git
-cd ./vfox-flutter/
-docker compose -f tests/e2e/linux/compose.yaml run --rm e2e
+devcontainer up --workspace-folder .
+devcontainer exec --workspace-folder . bash
 ```
 
-### rootless Docker
+`TESTCONTAINERS_RYUK_DISABLED=true` is preset: Ryuk publishes a port on the
+host daemon and waits for the suite to dial it back, which a
+Docker-out-of-Docker container cannot do. The suites terminate every
+container explicitly via `t.Cleanup` instead; leftovers from killed runs
+share the `vfox-flutter-e2e-` name prefix for pruning. Rootless Docker users
+export `DOCKER_SOCK="$XDG_RUNTIME_DIR/docker.sock"` on the host before
+opening the container. On Windows hosts, keeping the checkout inside WSL 2
+(e.g. under `\\wsl$`) keeps file and bind-mount access fast; a checkout on
+the Windows filesystem works too.
 
-With rootless Docker the daemon socket lives elsewhere; point `DOCKER_SOCK`
-at it instead:
+Windows *container* coverage (`tests/e2e/windows`) cannot run in a dev
+container: the Dev Containers spec does not support Windows container images
+([vscode-remote-release#445](https://github.com/microsoft/vscode-remote-release/issues/445)),
+and Windows containers only run on a Windows daemon. That suite keeps its
+Docker Compose runner on a Windows host; see [Windows 11 Pro](#windows-11-pro)
+below.
+
+## Linux (Ubuntu 26.04)
+
+Inside the dev container, from the repository root:
 
 ```bash
-sudo apt install --assume-yes git
-git clone git@github.com:version-fox/vfox-flutter.git
-cd ./vfox-flutter/
-DOCKER_SOCK="$XDG_RUNTIME_DIR/docker.sock" docker compose -f tests/e2e/linux/compose.yaml run --rm e2e
+cd tests/e2e
+go test -v -timeout 55m -run TestE2E ./linux
 ```
+
+Scope it down while iterating the same way:
+
+```bash
+VFOX_VERSION=latest FLAVOR=official MIRROR=default E2E_MAX_JOBS=1 go test -v -timeout 55m -run TestE2E ./linux
+```
+
+On a native host the same command works with two prerequisites — Docker
+Engine (rootful or rootless) and Go 1.26.8 — which is exactly what CI
+provisions. Rootless Docker users point the Docker client at their socket
+(`export DOCKER_HOST="unix://$XDG_RUNTIME_DIR/docker.sock"`); the dev
+container's socket mount covers that case for you. On ARM64 the official
+flavor runs only: OpenHarmony publishes no `linux-arm64` Dart SDK (see
+`docs/ohos.md`), so the ohos flavor cannot bootstrap there.
 
 ## Windows 11 Pro
 
 Windows containers cannot be emulated across architectures, so the ARM64 suite
 needs an ARM64 host (a Copilot+ PC or the `windows-11-arm` CI runner).
+
+There is no dev container for this suite — the Dev Containers spec rejects
+Windows container images (see [Dev container](#dev-container)) — so it keeps
+its Docker Compose runner. The runner image (`Dockerfile-runner`: stock
+servercore plus the pinned Go MSI) drives the host daemon through the mounted
+named pipe; the host requirement is Docker in Windows-container mode plus the
+Compose v5 plugin (installed once per machine below). Go never touches the
+host, so it cannot conflict with a vfox-managed toolchain.
 
 The `windows-11-arm` runner has no Windows Hypervisor Platform feature,
 so Hyper-V isolation is unavailable; process isolation needs only the Containers feature.
@@ -114,16 +164,19 @@ curl.exe -fsSL `
 docker compose -f tests/e2e/windows/compose.arm64.yaml run --rm --build e2e
 ```
 
+On arm64, Go is also what builds the engine, so `install-docker-arm64.ps1`
+runs before the suite; the compose runner image then carries its own pinned
+Go for the tests, and the host Go is not used again. Scope the run down with
+`$env:VFOX_VERSION = 'latest'; $env:FLAVOR = 'official'` in front of the
+compose command, as on the other platforms.
+
 ## Local checks
 
-Execute in Bash on Ubuntu before pushing.
+Execute from the dev container — everything below is preinstalled and pinned
+to the versions the workflows use — or provision the same tools on a host.
 
 ```bash
-docker run --rm -v "$PWD:/work" -w /work apache/skywalking-eyes:0.9.0 header check
-docker run --rm -v "$PWD:/work" -w /work apache/skywalking-eyes:0.9.0 header fix
-docker run --rm -v "$PWD:/src" ghcr.io/google/addlicense:v1.2.0 -check -f .license.tpl tests/e2e/windows/*.ps1
-docker run --rm -v "$PWD:/src" ghcr.io/google/addlicense:v1.2.0 -f .license.tpl tests/e2e/windows/*.ps1
-
+# Lua and Go checks (.github/workflows/lint.yml).
 cd tests/e2e
 go test -short ./...
 test -z "$(gofmt -l .)"
@@ -131,5 +184,23 @@ go vet ./...
 cd ../..
 
 stylua --check .
-mise x aqua:LuaLS/lua-language-server@3.19.1 -- lua-language-server --check . --checklevel=Warning
+lua-language-server --check . --checklevel=Warning
+```
+
+```bash
+# License headers (.github/workflows/license.yml).
+license-eye header check
+license-eye header fix
+addlicense -check -f .license.tpl tests/e2e/windows/*.ps1
+addlicense -f .license.tpl tests/e2e/windows/*.ps1
+```
+
+On a Docker-only host the license checks run as containers instead (the same
+images CI uses):
+
+```bash
+docker run --rm -v "$PWD:/work" -w /work apache/skywalking-eyes:0.9.0 header check
+docker run --rm -v "$PWD:/work" -w /work apache/skywalking-eyes:0.9.0 header fix
+docker run --rm -v "$PWD:/src" ghcr.io/google/addlicense:v1.2.0 -check -f .license.tpl tests/e2e/windows/*.ps1
+docker run --rm -v "$PWD:/src" ghcr.io/google/addlicense:v1.2.0 -f .license.tpl tests/e2e/windows/*.ps1
 ```
