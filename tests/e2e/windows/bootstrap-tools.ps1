@@ -35,20 +35,36 @@ function Invoke-Native {
 
 $IsArm64 = $env:PROCESSOR_ARCHITECTURE -eq 'ARM64'
 $pwshArch = if ($IsArm64) { 'arm64' } else { 'x64' }
-$gitAsset = if ($IsArm64) { 'Git-2.55.0.5-arm64.exe' } else { 'Git-2.55.0.5-64-bit.exe' }
+$gitArch = if ($IsArm64) { 'arm64' } else { '64-bit' }
 
-$pwshInstaller = "$env:TEMP\pwsh.msi"
-$pwshUrl = "https://github.com/PowerShell/PowerShell/releases/download/v7.6.6/PowerShell-7.6.6-win-$pwshArch.msi"
-$gitInstaller = "$env:TEMP\git-installer.exe"
-$gitUrl = "https://github.com/git-for-windows/git/releases/download/v2.55.0.windows.5/$gitAsset"
+# Portable zips unpacked with the native tar.exe instead of the installers:
+# Git for Windows' installer is an x86 program, which arm64 containers only
+# run under emulation, at a cost of minutes. MinGit is the same git.exe
+# without the extras (bash, Perl, the credential manager) that neither vfox
+# nor Flutter calls. It cannot live in C:\Program Files\Git: its
+# etc\gitconfig includes the system config of a Git for Windows installed
+# there, which would then include itself.
+$pwshHome = 'C:\Program Files\PowerShell\7'
+$gitHome = 'C:\Program Files\MinGit'
+$pwshZip = "$env:TEMP\pwsh.zip"
+$pwshUrl = "https://github.com/PowerShell/PowerShell/releases/download/v7.6.6/PowerShell-7.6.6-win-$pwshArch.zip"
+$gitZip = "$env:TEMP\mingit.zip"
+$gitUrl = "https://github.com/git-for-windows/git/releases/download/v2.55.0.windows.5/MinGit-2.55.0.5-$gitArch.zip"
 
-Invoke-Native { & curl.exe -fsSL --retry 3 --retry-delay 5 --retry-all-errors -o $pwshInstaller $pwshUrl } 'the PowerShell download'
-Invoke-Native { & curl.exe -fsSL --retry 3 --retry-delay 5 --retry-all-errors -o $gitInstaller $gitUrl } 'the Git download'
-$pwshSetup = Start-Process msiexec.exe -Wait -PassThru -ArgumentList '/i', "`"$pwshInstaller`"", '/quiet', '/norestart'
-if ($pwshSetup.ExitCode -notin 0, 3010) { throw "FAIL the PowerShell MSI install exited with code $($pwshSetup.ExitCode)" }
-$gitSetup = Start-Process $gitInstaller -Wait -PassThru -ArgumentList '/VERYSILENT', '/NORESTART', '/SP-', '/SUPPRESSMSGBOXES'
-if ($gitSetup.ExitCode -ne 0) { throw "FAIL the Git installer exited with code $($gitSetup.ExitCode)" }
-if (-not (Test-Path 'C:\Program Files\PowerShell\7\pwsh.exe')) { throw 'FAIL pwsh.exe is missing after the PowerShell MSI install' }
-if (-not (Test-Path 'C:\Program Files\Git\cmd\git.exe')) { throw 'FAIL git.exe is missing after the Git installer' }
-Invoke-Native { & 'C:\Program Files\Git\cmd\git.exe' config --system core.longpaths true } 'enable system-wide git long paths'
+Invoke-Native { & curl.exe -fsSL --retry 3 --retry-delay 5 --retry-all-errors -o $pwshZip $pwshUrl } 'the PowerShell download'
+Invoke-Native { & curl.exe -fsSL --retry 3 --retry-delay 5 --retry-all-errors -o $gitZip $gitUrl } 'the MinGit download'
+New-Item -ItemType Directory -Force -Path $pwshHome, $gitHome | Out-Null
+Invoke-Native { & tar.exe -xf $pwshZip -C $pwshHome } 'the PowerShell unpack'
+Invoke-Native { & tar.exe -xf $gitZip -C $gitHome } 'the MinGit unpack'
+Remove-Item $pwshZip, $gitZip
+if (-not (Test-Path "$pwshHome\pwsh.exe")) { throw 'FAIL pwsh.exe is missing after the PowerShell unpack' }
+if (-not (Test-Path "$gitHome\cmd\git.exe")) { throw 'FAIL git.exe is missing after the MinGit unpack' }
+
+# What the installers did besides unpacking: put both on the machine PATH,
+# and give git the installer defaults MinGit's etc\gitconfig lacks (it
+# already sets core.autocrlf and core.symlinks).
+$machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+[Environment]::SetEnvironmentVariable('Path', "$machinePath;$pwshHome;$gitHome\cmd", 'Machine')
+Invoke-Native { & "$gitHome\cmd\git.exe" config --system core.fscache true } 'enable the git file system cache'
+Invoke-Native { & "$gitHome\cmd\git.exe" config --system core.longpaths true } 'enable system-wide git long paths'
 New-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' -Name 'LongPathsEnabled' -Value 1 -PropertyType DWORD -Force | Out-Null

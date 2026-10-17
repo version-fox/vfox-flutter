@@ -48,6 +48,8 @@ func TestE2E(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skip container E2E in short mode")
 	}
+	// Alongside TestE2EZshBrew, which otherwise waits for every combo here.
+	t.Parallel()
 
 	arch, err := common.DetectArch()
 	if err != nil {
@@ -156,8 +158,10 @@ func runOne(t *testing.T, ctx context.Context, image, platform string, c common.
 	if err != nil {
 		t.Fatalf("[%s] start container: %v", prefix, err)
 	}
-	t.Cleanup(func() {
-		_ = ctr.Terminate(context.Background())
+	// sleep infinity, as PID 1, ignores SIGTERM, so a graceful stop only
+	// waits out its timeout: kill right away instead.
+	common.Cleanup(t, func() {
+		_ = ctr.Terminate(context.Background(), tc.StopTimeout(0))
 	})
 
 	// One overall budget per combo; the CI job timeout stays the outer bound.

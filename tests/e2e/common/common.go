@@ -202,6 +202,29 @@ func RetryAttempts() int {
 	return 3
 }
 
+// AsyncCleanup reports whether containers are torn down in the background
+// instead of holding up the test that ran them; honours $E2E_ASYNC_CLEANUP.
+// CI sets it, since the runner is discarded with whatever still runs on
+// it; local runs keep waiting so no container outlives the suite.
+func AsyncCleanup() bool {
+	v, _ := strconv.ParseBool(strings.TrimSpace(os.Getenv("E2E_ASYNC_CLEANUP")))
+	return v
+}
+
+// Cleanup registers terminate to run once t finishes, in the background
+// under AsyncCleanup (the suite may then exit before the last containers
+// are gone).
+func Cleanup(t *testing.T, terminate func()) {
+	t.Helper()
+	t.Cleanup(func() {
+		if AsyncCleanup() {
+			go terminate()
+			return
+		}
+		terminate()
+	})
+}
+
 // ResolveFlutterVersion honours $FLUTTER_VERSION / $OHOS_VERSION, else the
 // defaults above.
 func ResolveFlutterVersion(t *testing.T, flavor string) string {

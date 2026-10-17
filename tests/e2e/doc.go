@@ -22,8 +22,8 @@
 //     defaults, retry counts, name handling);
 //   - linux: the Linux container suite (bash-driven), run in CI and locally
 //     through the repository dev container (.devcontainer/, see docs/e2e.md);
-//   - windows: the Windows container suite (pwsh-driven), run via
-//     tests/e2e/windows/compose.amd64.yaml (amd64) or
+//   - windows: the Windows container suite (pwsh-driven), run natively in CI
+//     and locally via tests/e2e/windows/compose.amd64.yaml (amd64) or
 //     tests/e2e/windows/compose.arm64.yaml (arm64) as `go test ./windows/`.
 //
 // Pure unit tests without containers (matrix expansion and friends) run from

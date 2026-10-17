@@ -26,12 +26,13 @@ import (
 	"github.com/version-fox/vfox-flutter/tests/e2e/common"
 )
 
-// Flutter defaults live in the common package; only the Windows-specific
-// toolchain pin stays here.
+// Flutter defaults live in the common package; only Windows-specific
+// locations stay here.
 const (
-	// goWindowsVersion pins the Go toolchain MSI used to build vfox@main
-	// inside the container (was setup.ps1).
-	goWindowsVersion = "1.27.1"
+	// vfoxMainStaged is where a main combo's container receives the vfox.exe
+	// built from main (vfoxMainBuild): a tar entry relative to the container's
+	// C:\ root, copied in through ContainerRequest.Files before it starts.
+	vfoxMainStaged = "vfox-main/vfox.exe"
 
 	// spacedVfoxHome is the default vfox home of a Windows account whose
 	// name contains a space, the layout reported in
@@ -159,49 +160,17 @@ func installVfoxRelease(ctx context.Context, t *testing.T, ctr tc.Container, box
 	t.Logf("PASS installed vfox %s (%s)", tag, vfoxArch)
 }
 
-// installVfoxMain replicates Install-VfoxMain: install the pinned Go MSI,
-// clone vfox, and build vfox.exe. msiexec exit codes 0/3010/1937 all mean
-// success (ok / reboot-required / in-use-files), same as setup.ps1.
-func installVfoxMain(ctx context.Context, t *testing.T, ctr tc.Container, box slotBox, procArch string) {
-	t.Helper()
-	goArch := "amd64"
-	if procArch == "ARM64" {
-		goArch = "arm64"
-	}
-	goMsi := box.tmp + `\go.msi`
-	execOK(ctx, t, ctr, fmt.Sprintf(
-		"curl.exe %s -fsSL -o %s %s",
-		curlRetry, pwshQuote(goMsi),
-		pwshQuote(fmt.Sprintf("https://go.dev/dl/go%s.windows-%s.msi", goWindowsVersion, goArch))),
-		box.vars...)
-	execOK(ctx, t, ctr, fmt.Sprintf(`$goInstall = $null
-for ($attempt = 1; $attempt -le 5; $attempt++) {
-  $goInstall = Start-Process msiexec.exe -Wait -PassThru -ArgumentList '/i', %s, '/quiet', '/norestart'
-  if ($goInstall.ExitCode -in 0, 3010, 1937) { break }
-  Start-Sleep -Seconds 15
-}
-if ($goInstall.ExitCode -notin 0, 3010, 1937) { throw ('FAIL the Go MSI install exited with code ' + $goInstall.ExitCode) }
-Remove-Item %s`, pwshQuote(goMsi), pwshQuote(goMsi)), box.vars...)
-
-	src := box.workDir + `\vfox-src`
-	execOK(ctx, t, ctr,
-		fmt.Sprintf("git clone --depth 1 https://github.com/version-fox/vfox %s", pwshQuote(src)),
-		box.vars...)
-	execOK(ctx, t, ctr, fmt.Sprintf(
-		`& 'C:\Program Files\Go\bin\go.exe' -C %s build -trimpath -o %s .`,
-		pwshQuote(src), pwshQuote(box.vfoxExe)), box.vars...)
-	t.Logf("PASS built vfox from main with Go %s (%s)", goWindowsVersion, goArch)
-}
-
-// setupVfox installs vfox (release, or builds main) and registers the local
-// flutter plugin (was setup.ps1).
+// setupVfox installs vfox (a release, or stages the build of main the
+// container received at vfoxMainStaged) and registers the local flutter
+// plugin (was setup.ps1).
 func setupVfox(ctx context.Context, t *testing.T, ctr tc.Container, box slotBox, vfoxVersion string) {
 	t.Helper()
-	procArch := procArchOfContainer(ctx, t, ctr)
 	if vfoxVersion == "main" {
-		installVfoxMain(ctx, t, ctr, box, procArch)
+		staged := `C:\` + strings.ReplaceAll(vfoxMainStaged, "/", `\`)
+		execOK(ctx, t, ctr, fmt.Sprintf("Copy-Item -Path %s -Destination %s",
+			pwshQuote(staged), pwshQuote(box.vfoxExe)), box.vars...)
 	} else {
-		installVfoxRelease(ctx, t, ctr, box, procArch)
+		installVfoxRelease(ctx, t, ctr, box, procArchOfContainer(ctx, t, ctr))
 	}
 	execOK(ctx, t, ctr, fmt.Sprintf(
 		"tar -a -cf %s -C 'C:\\e2e' metadata.lua hooks lib",

@@ -200,3 +200,24 @@ func TestRetryAttemptsDefault(t *testing.T) {
 		t.Errorf("retryAttempts = %d, want 5", got)
 	}
 }
+
+func TestAsyncCleanup(t *testing.T) {
+	for v, want := range map[string]bool{"": false, "0": false, "junk": false, "1": true, "true": true} {
+		t.Setenv("E2E_ASYNC_CLEANUP", v)
+		if got := AsyncCleanup(); got != want {
+			t.Errorf("AsyncCleanup with %q = %v, want %v", v, got, want)
+		}
+	}
+}
+
+// Without E2E_ASYNC_CLEANUP a combo only finishes once its container is gone.
+func TestCleanupWaitsByDefault(t *testing.T) {
+	t.Setenv("E2E_ASYNC_CLEANUP", "")
+	terminated := false
+	t.Run("combo", func(t *testing.T) {
+		Cleanup(t, func() { terminated = true })
+	})
+	if !terminated {
+		t.Error("the combo finished before its container was terminated")
+	}
+}

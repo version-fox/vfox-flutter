@@ -18,7 +18,8 @@ import (
 	"github.com/version-fox/vfox-flutter/tests/e2e/common"
 )
 
-// maxJobs bounds parallel containers; honours $E2E_MAX_JOBS (default 3).
+// maxJobs bounds parallel matrix containers (TestE2EZshBrew runs its own
+// alongside); honours $E2E_MAX_JOBS (default 3).
 func maxJobs() int {
 	return common.MaxJobs(3)
 }

@@ -26,12 +26,18 @@ concurrency:
   group: e2e-${{ github.ref }}
   cancel-in-progress: true
 
-# The Linux job runs the suite natively, the way the dev container runs it
-# locally: Go at the dev container's version (.devcontainer/Dockerfile) plus
-# the runner's stock Docker, with the same TESTCONTAINERS_RYUK_DISABLED knob.
-# The Windows jobs keep the compose runner image
-# (tests/e2e/windows/Dockerfile-runner), which carries its own Go toolchain,
-# so a Windows host needs only Docker. See docs/e2e.md.
+# Both jobs run the suite natively: Go at the dev container's version
+# (.devcontainer/Dockerfile) plus the runner's Docker. The Linux job runs it
+# the way the dev container runs it locally, with the same
+# TESTCONTAINERS_RYUK_DISABLED knob. The Windows jobs skip the compose
+# runner image local Windows hosts use (tests/e2e/windows/Dockerfile-runner):
+# baking Go into a Windows image costs minutes per run. See docs/e2e.md.
+
+env:
+  GO_VERSION: '1.26.8'
+  # Runners are discarded with whatever still runs on them, so the suites
+  # tear containers down in the background (common.AsyncCleanup).
+  E2E_ASYNC_CLEANUP: 'true'
 
 jobs:
   e2e-linux:
@@ -53,7 +59,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
-          go-version: '1.26.8'
+          go-version: ${{ env.GO_VERSION }}
           cache: false
       - run: go test -v -timeout 55m -run TestE2E ./linux
         working-directory: tests/e2e
@@ -66,27 +72,86 @@ jobs:
       matrix:
         # TODO See https://github.com/actions/runner-images/issues/13729
         runs-on: [windows-latest, windows-11-arm]
-        include:
-          - runs-on: windows-latest
-            compose: tests/e2e/windows/compose.amd64.yaml
-          - runs-on: windows-11-arm
-            compose: tests/e2e/windows/compose.arm64.yaml
     runs-on: ${{ matrix.runs-on }}
     timeout-minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      # As many containers at a time as on Linux, now that the engine works
+      # off a local disk (windows-11-arm runs two combos anyway).
+      E2E_MAX_JOBS: '3'
     steps:
       - uses: actions/checkout@v7
-      # TODO For compiling moby only. Because https://github.com/actions/runner-images/blob/win11-arm64/20260920.174/images/windows/Windows11-Arm64-Readme.md is still using `Go 1.24.13`.
+      # The engine's data-root takes every image pull, layer commit and
+      # in-container Flutter install, and the runners' C: OS disk is slow
+      # remote storage. windows-latest keeps the workspace on a local D:
+      # disk: move the preinstalled engine's data-root next to it.
+      - if: matrix.runs-on == 'windows-latest'
+        name: Move the Docker data-root to the workspace disk
+        run: |
+          $dataRoot = (Split-Path -Qualifier $env:GITHUB_WORKSPACE) + '\docker'
+          $config = Join-Path $env:ProgramData 'docker\config\daemon.json'
+          $settings = if (Test-Path $config) { Get-Content -Raw $config | ConvertFrom-Json } else { [pscustomobject]@{} }
+          $settings | Add-Member -NotePropertyName 'data-root' -NotePropertyValue $dataRoot -Force
+          New-Item -ItemType Directory -Force -Path (Split-Path $config) | Out-Null
+          $settings | ConvertTo-Json | Set-Content -Path $config -Encoding ascii
+          Restart-Service docker
+          for ($attempt = 1; $attempt -le 30; $attempt++) {
+            $current = docker info --format '{{.DockerRootDir}}' 2>$null
+            if ($LASTEXITCODE -eq 0) { break }
+            Start-Sleep -Seconds 2
+          }
+          if ($current -ne $dataRoot) { throw "FAIL the engine runs off '$current', want '$dataRoot'" }
+          Write-Output "PASS the Docker data-root is $current"
+      # windows-11-arm has no D:, but carries an unformatted local NVMe disk
+      # (actions/runner-images#14088): format it for the engine's data-root.
       - if: matrix.runs-on == 'windows-11-arm'
+        id: disk
+        name: Format the local NVMe disk
+        run: |
+          $disk = Get-Disk | Where-Object PartitionStyle -eq 'RAW' | Select-Object -First 1
+          if ($disk) {
+            $volume = $disk | Initialize-Disk -PartitionStyle GPT -PassThru |
+              New-Partition -AssignDriveLetter -UseMaximumSize |
+              Format-Volume -FileSystem NTFS -Confirm:$false
+            "data-root=$($volume.DriveLetter):\vfox-docker\data" >> $env:GITHUB_OUTPUT
+            Write-Output "PASS formatted raw disk $($disk.Number) as $($volume.DriveLetter):"
+          }
+          else {
+            Write-Output '::warning::no raw local disk; the Docker data-root stays on C:'
+          }
+      # Building the engine from source takes minutes; the script reuses the
+      # binaries restored here.
+      - if: matrix.runs-on == 'windows-11-arm'
+        id: moby
+        uses: actions/cache@v6
+        with:
+          path: C:\vfox-docker\bin
+          key: moby-windows-arm64-go${{ env.GO_VERSION }}-${{ hashFiles('tests/e2e/windows/install-docker-arm64.ps1') }}
+      # Go is needed this early only to build the engine; otherwise it is set
+      # up below, while the base image pulls.
+      - if: matrix.runs-on == 'windows-11-arm' && steps.moby.outputs.cache-hit != 'true'
         uses: actions/setup-go@v7
         with:
-          go-version: 1.26.8
+          go-version: ${{ env.GO_VERSION }}
           cache: false
       - if: matrix.runs-on == 'windows-11-arm'
-        run: pwsh -NoProfile -File tests/e2e/windows/install-docker-arm64.ps1
-      - if: matrix.runs-on == 'windows-11-arm'
-        name: Install Compose CLI plugin
+        run: pwsh -NoProfile -File tests/e2e/windows/install-docker-arm64.ps1 -DataRoot '${{ steps.disk.outputs.data-root }}'
+      # Unpacking servercore is the longest setup step and needs nothing but
+      # the engine: start it now so that setting up Go and compiling the
+      # suite overlap it. The suite's own pull of the image joins this one.
+      - name: Pull the base image in the background
         run: |
-          New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.docker\cli-plugins" | Out-Null
-          curl.exe -fsSL "https://github.com/docker/compose/releases/download/v5.5.1/docker-compose-windows-aarch64.exe" -o "$env:USERPROFILE\.docker\cli-plugins\docker-compose.exe"
-          docker compose version
-      - run: docker compose -f ${{ matrix.compose }} run --rm --build e2e
+          $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'amd64' }
+          $match = Select-String -Path tests/e2e/windows/Dockerfile -Pattern '^ARG BASE_IMAGE=(.+)-amd64$'
+          if (-not $match) { throw 'FAIL tests/e2e/windows/Dockerfile has no ARG BASE_IMAGE=...-amd64 line' }
+          $image = $match.Matches[0].Groups[1].Value + "-$arch"
+          Start-Process docker -ArgumentList 'pull', $image -RedirectStandardOutput "$env:RUNNER_TEMP\base-pull.log" -RedirectStandardError "$env:RUNNER_TEMP\base-pull.err.log"
+          Write-Output "Pulling $image in the background"
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+      - run: go test -v -timeout 55m -run TestE2E ./windows
+        working-directory: tests/e2e
