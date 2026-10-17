@@ -28,8 +28,10 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -180,6 +182,51 @@ func MatrixForArch(arch string) ([]Combo, error) {
 	return combos, nil
 }
 
+// SlowestFirst returns combos ordered by how long they usually take, the
+// slowest first, so a bounded run (RunCombos) ends on short combos instead
+// of starting a long one last: non-default mirrors (the CN mirror is far
+// from the CI runners) before the default one, official before ohos. The
+// order is otherwise kept.
+func SlowestFirst(combos []Combo) []Combo {
+	slowness := func(c Combo) int {
+		w := 0
+		if c.Mirror != "default" {
+			w += 2
+		}
+		if c.Flavor == "official" {
+			w++
+		}
+		return w
+	}
+	sorted := slices.Clone(combos)
+	slices.SortStableFunc(sorted, func(a, b Combo) int { return slowness(b) - slowness(a) })
+	return sorted
+}
+
+// RunCombos runs run as one subtest per combo, at most jobs at a time,
+// starting them in the given order: unlike t.Parallel behind a semaphore,
+// whose start order is up to the scheduler, so callers can put the slowest
+// combos first.
+func RunCombos(t *testing.T, combos []Combo, jobs int, run func(t *testing.T, c Combo)) {
+	t.Helper()
+	queue := make(chan Combo, len(combos))
+	for _, c := range combos {
+		queue <- c
+	}
+	close(queue)
+	var wg sync.WaitGroup
+	for range min(max(jobs, 1), len(combos)) {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for c := range queue {
+				t.Run(c.Slug(), func(t *testing.T) { run(t, c) })
+			}
+		}()
+	}
+	wg.Wait()
+}
+
 // MaxJobs bounds parallel containers; honours $E2E_MAX_JOBS and falls back
 // to def when unset or invalid. Linux passes 3, Windows passes 2 (matching
 // the old e2e.ps1).
@@ -200,6 +247,29 @@ func RetryAttempts() int {
 		}
 	}
 	return 3
+}
+
+// AsyncCleanup reports whether containers are torn down in the background
+// instead of holding up the test that ran them; honours $E2E_ASYNC_CLEANUP.
+// CI sets it, since the runner is discarded with whatever still runs on
+// it; local runs keep waiting so no container outlives the suite.
+func AsyncCleanup() bool {
+	v, _ := strconv.ParseBool(strings.TrimSpace(os.Getenv("E2E_ASYNC_CLEANUP")))
+	return v
+}
+
+// Cleanup registers terminate to run once t finishes, in the background
+// under AsyncCleanup (the suite may then exit before the last containers
+// are gone).
+func Cleanup(t *testing.T, terminate func()) {
+	t.Helper()
+	t.Cleanup(func() {
+		if AsyncCleanup() {
+			go terminate()
+			return
+		}
+		terminate()
+	})
 }
 
 // ResolveFlutterVersion honours $FLUTTER_VERSION / $OHOS_VERSION, else the

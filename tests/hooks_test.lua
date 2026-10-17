@@ -201,6 +201,27 @@ tests[#tests + 1] = {
         installed("stable-x64", "3.44.0-x64", "x64")
     end,
 }
+tests[#tests + 1] = {
+    "fetch gives up on a stalled transfer and retries",
+    function()
+        RUNTIME = { osType = "linux", archType = "amd64" }
+        local git = require("git")
+        local commands, exits = {}, { 1, 1, 0, 1, 1, 1 }
+        local execute = os.execute
+        os.execute = function(command)
+            table.insert(commands, command)
+            return table.remove(exits, 1)
+        end
+        local first = git.fetch("/sdk", "https://example.invalid/flutter.git", "refs/tags/3.44.0")
+        local second = git.fetch("/sdk", "https://example.invalid/flutter.git", "refs/tags/3.44.0")
+        os.execute = execute
+        equal(first, true)
+        equal(second, false)
+        equal(#commands, 6)
+        local guard = "git -C '/sdk' -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 fetch "
+        assert(commands[1]:find(guard, 1, true), commands[1])
+    end,
+}
 
 local failures = 0
 for _, test in ipairs(tests) do

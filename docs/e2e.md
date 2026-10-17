@@ -3,10 +3,10 @@
 The offline Lua hook tests (`tests/hooks_test.lua`) run in the **Test Plugin** workflow.
 The end-to-end suite runs in containers against real vfox on Linux and Windows;
 each `vfox` x `flavor` x `mirror` combination gets its own throwaway
-container. On Linux, CI runs the suite natively on the stock runners (Docker
-plus Go from `actions/setup-go`), the way the repository dev container
-reproduces it locally. On Windows it runs through a Docker Compose runner
-image, since dev containers cannot host Windows container images (see below).
+container. CI runs both suites natively on the stock runners (Docker plus Go
+from `actions/setup-go`). Locally, the repository dev container reproduces the
+Linux run; Windows hosts use a Docker Compose runner image instead, since dev
+containers cannot host Windows container images (see below).
 
 ## Dev container
 
@@ -40,7 +40,10 @@ devcontainer exec --workspace-folder . bash
 host daemon and waits for the suite to dial it back, which a
 Docker-out-of-Docker container cannot do. The suites terminate every
 container explicitly via `t.Cleanup` instead; leftovers from killed runs
-share the `vfox-flutter-e2e-` name prefix for pruning. Rootless Docker users
+share the `vfox-flutter-e2e-` name prefix for pruning. CI sets
+`E2E_ASYNC_CLEANUP=true` so that teardown runs in the background instead of
+holding up each combination, since its runners are discarded anyway; the
+last containers may then outlive the suite. Rootless Docker users
 export `DOCKER_SOCK="$XDG_RUNTIME_DIR/docker.sock"` on the host before
 opening the container. On Windows hosts, keeping the checkout inside WSL 2
 (e.g. under `\\wsl$`) keeps file and bind-mount access fast; a checkout on
@@ -88,6 +91,28 @@ servercore plus the pinned Go MSI) drives the host daemon through the mounted
 named pipe; the host requirement is Docker in Windows-container mode plus the
 Compose v5 plugin (installed once per machine below). Go never touches the
 host, so it cannot conflict with a vfox-managed toolchain.
+
+CI skips that runner image, which costs minutes per run to build, and runs
+`go test` on the runner with Go from `actions/setup-go`, like the Linux job.
+It also moves the engine's data-root off the runners' slow C: OS disk,
+where image pulls, layer commits and the in-container Flutter installs would
+otherwise crawl: next to the workspace on `windows-latest`'s local D: disk,
+and onto the local NVMe disk `windows-11-arm` ships unformatted. With that,
+`E2E_MAX_JOBS` is 4 there. Both suites start the combinations slowest first
+(the CN mirror, then the official SDK), so the last ones to start are short.
+Unpacking the servercore base image remains the longest setup step, so CI
+starts pulling it in the background before it sets up Go and compiles the
+suite.
+
+The target image (`tests/e2e/windows/Dockerfile`) unpacks PowerShell 7 and
+MinGit from their portable zips instead of running their installers: Git
+for Windows' installer is an x86 program, which arm64 containers only run
+under emulation. MinGit is the same `git.exe` without bash, Perl and the
+credential manager, none of which vfox or Flutter calls.
+
+The `main` combinations share one `vfox.exe`: the suite builds it from vfox's
+main branch with its own Go toolchain while the image builds, and copies it
+into each `main` container before the container starts.
 
 The `windows-11-arm` runner has no Windows Hypervisor Platform feature,
 so Hyper-V isolation is unavailable; process isolation needs only the Containers feature.
@@ -165,7 +190,11 @@ docker compose -f tests/e2e/windows/compose.arm64.yaml run --rm --build e2e
 
 On arm64, Go is also what builds the engine, so `install-docker-arm64.ps1`
 runs before the suite; the compose runner image then carries its own pinned
-Go for the tests, and the host Go is not used again. Scope the run down with
+Go for the tests, and the host Go is not used again. The script keeps the
+engine binaries in `C:\vfox-docker\bin` and reuses them on later runs while
+they match its pinned version (CI caches that directory); `-DataRoot` moves
+the engine's images and containers off the default `C:\vfox-docker\data`.
+Scope the run down with
 `$env:VFOX_VERSION = 'latest'; $env:FLAVOR = 'official'` in front of the
 compose command, as on the other platforms.
 

@@ -143,8 +143,9 @@ func TestE2EZshBrew(t *testing.T) {
 	if err != nil {
 		t.Fatalf("start container: %v", err)
 	}
-	t.Cleanup(func() {
-		_ = ctr.Terminate(context.Background())
+	// sleep infinity, as PID 1, ignores SIGTERM: kill right away.
+	common.Cleanup(t, func() {
+		_ = ctr.Terminate(context.Background(), tc.StopTimeout(0))
 	})
 
 	ctx, cancel := context.WithTimeout(ctx, zshBrewTimeout)

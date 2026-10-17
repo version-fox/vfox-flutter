@@ -57,6 +57,7 @@ services:
       OHOS_VERSION: ${OHOS_VERSION:-}
       VFOX_FLUTTER_GITHUB_MIRROR: ${VFOX_FLUTTER_GITHUB_MIRROR:-}
       E2E_RETRY_ATTEMPTS: ${E2E_RETRY_ATTEMPTS:-}
+      E2E_ASYNC_CLEANUP: ${E2E_ASYNC_CLEANUP:-}
     command: ["go", "test", "-v", "-timeout", "55m", "-run", "TestE2E", "./windows"]
 
 volumes:

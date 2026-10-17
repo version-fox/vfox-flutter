@@ -41,6 +41,9 @@ vfox search flutter
 - **Mirrors don't apply.** `FLUTTER_STORAGE_BASE_URL` and `VFOX_FLUTTER_GITHUB_MIRROR` (see `mirror.md`) only affect
   official SDK downloads; OpenHarmony builds are cloned from gitcode, so both variables
   are ignored.
+- **Stalled clones are retried.** A fetch from gitcode that stalls (under 1 KB/s for a
+  minute) is abandoned and retried, up to three attempts; `GIT_HTTP_LOW_SPEED_LIMIT` /
+  `GIT_HTTP_LOW_SPEED_TIME` change the threshold.
 
 ### Building OpenHarmony applications
 

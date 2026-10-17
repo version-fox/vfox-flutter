@@ -40,7 +40,7 @@ import (
 )
 
 // TestE2E builds the image once, then runs one container per matrix combo.
-// Bounded parallelism via t.Parallel + semaphore (like E2E_MAX_JOBS).
+// Bounded parallelism via common.RunCombos (E2E_MAX_JOBS), slowest first.
 //
 // Full matrix (~45min) runs in CI; locally scope it down, e.g.:
 // VFOX_VERSION=latest FLAVOR=official MIRROR=default E2E_MAX_JOBS=1 go test -v ./linux/
@@ -48,6 +48,8 @@ func TestE2E(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skip container E2E in short mode")
 	}
+	// Alongside TestE2EZshBrew, which otherwise waits for every combo here.
+	t.Parallel()
 
 	arch, err := common.DetectArch()
 	if err != nil {
@@ -73,16 +75,9 @@ func TestE2E(t *testing.T) {
 		t.Fatal("empty matrix: nothing to run")
 	}
 
-	sem := make(chan struct{}, maxJobs())
-	for _, c := range combos {
-		c := c
-		t.Run(c.Slug(), func(t *testing.T) {
-			t.Parallel()
-			sem <- struct{}{}
-			defer func() { <-sem }()
-			runOne(t, ctx, image, platform, c)
-		})
-	}
+	common.RunCombos(t, common.SlowestFirst(combos), maxJobs(), func(t *testing.T, c common.Combo) {
+		runOne(t, ctx, image, platform, c)
+	})
 }
 
 // buildImage replicates `docker build --pull --platform $platform
@@ -156,8 +151,10 @@ func runOne(t *testing.T, ctx context.Context, image, platform string, c common.
 	if err != nil {
 		t.Fatalf("[%s] start container: %v", prefix, err)
 	}
-	t.Cleanup(func() {
-		_ = ctr.Terminate(context.Background())
+	// sleep infinity, as PID 1, ignores SIGTERM, so a graceful stop only
+	// waits out its timeout: kill right away instead.
+	common.Cleanup(t, func() {
+		_ = ctr.Terminate(context.Background(), tc.StopTimeout(0))
 	})
 
 	// One overall budget per combo; the CI job timeout stays the outer bound.

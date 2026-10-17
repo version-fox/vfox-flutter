@@ -15,17 +15,19 @@
 // Package windows is the Windows container E2E suite, driven entirely from
 // Go via testcontainers-go.
 //
-// TestE2E builds the image in tests/e2e/windows/Dockerfile once, then runs
-// one long-lived container per (vfox version x flavor x mirror) combination
-// and drives setup -> install -> verify through pwsh exec calls (setup.go,
-// install.go, verify.go), asserting in Go. Target-independent logic (matrix
-// expansion and friends) is reused from the common package.
+// TestE2E builds the image in tests/e2e/windows/Dockerfile once (and vfox
+// main alongside it, see vfoxmain.go), then runs one long-lived container
+// per (vfox version x flavor x mirror) combination and drives setup ->
+// install -> verify through pwsh exec calls (setup.go, install.go,
+// verify.go), asserting in Go. Target-independent logic (matrix expansion
+// and friends) is reused from the common package.
 package windows
 
 import (
 	"context"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -40,7 +42,7 @@ import (
 )
 
 // TestE2E builds the image once, then runs one container per matrix combo.
-// Bounded parallelism via t.Parallel + semaphore (like E2E_MAX_JOBS).
+// Bounded parallelism via common.RunCombos (E2E_MAX_JOBS), slowest first.
 //
 // Full matrix runs in CI; locally scope it down, e.g.:
 // VFOX_VERSION=latest FLAVOR=official MIRROR=default E2E_MAX_JOBS=1 go test -v ./windows/
@@ -66,9 +68,6 @@ func TestE2E(t *testing.T) {
 	}
 	repoRoot := filepath.Join(here, "..", "..", "..")
 
-	ctx := context.Background()
-	buildImage(t, ctx, repoRoot, image, platform, baseImage)
-
 	combos, err := common.Matrix()
 	if err != nil {
 		t.Fatal(err)
@@ -77,16 +76,18 @@ func TestE2E(t *testing.T) {
 		t.Fatal("empty matrix: nothing to run")
 	}
 
-	sem := make(chan struct{}, maxJobs())
-	for _, c := range combos {
-		c := c
-		t.Run(c.Slug(), func(t *testing.T) {
-			t.Parallel()
-			sem <- struct{}{}
-			defer func() { <-sem }()
-			runOne(t, ctx, image, platform, c)
-		})
+	// vfox main builds in the background while the image does.
+	var vfoxMain *vfoxMainBuild
+	if slices.ContainsFunc(combos, func(c common.Combo) bool { return c.Vfox == "main" }) {
+		vfoxMain = startVfoxMainBuild(t.Context(), t.TempDir(), arch)
 	}
+
+	ctx := context.Background()
+	buildImage(t, ctx, repoRoot, image, platform, baseImage)
+
+	common.RunCombos(t, common.SlowestFirst(combos), maxJobs(), func(t *testing.T, c common.Combo) {
+		runOne(t, ctx, image, platform, c, vfoxMain)
+	})
 }
 
 // buildImage replicates `docker build --pull --platform $platform
@@ -133,8 +134,9 @@ func buildImage(t *testing.T, ctx context.Context, repoRoot, image, platform, ba
 // E2E flow (setup -> preflight -> install -> verify) through pwsh exec
 // calls, asserting in Go. A combo passes when every phase exits 0 and the
 // outputs carry the expected markers. Every combo runs against a VFOX_HOME
-// containing a space (see spacedVfoxHome).
-func runOne(t *testing.T, ctx context.Context, image, platform string, c common.Combo) {
+// containing a space (see spacedVfoxHome); main combos also receive the
+// vfox.exe built from main (vfoxMainStaged).
+func runOne(t *testing.T, ctx context.Context, image, platform string, c common.Combo, vfoxMain *vfoxMainBuild) {
 	t.Helper()
 	prefix := c.Prefix(platform)
 
@@ -161,19 +163,31 @@ func runOne(t *testing.T, ctx context.Context, image, platform string, c common.
 	if err != nil {
 		t.Fatalf("[%s] new docker provider: %v", prefix, err)
 	}
-	// NB: no provider.Close here: the container below terminates through
-	// this very provider in t.Cleanup.
-	ctr, err := provider.RunContainer(ctx, tc.ContainerRequest{
+	req := tc.ContainerRequest{
 		Image:         image,
 		ImagePlatform: platform,
 		Name:          common.ContainerName(c.Slug()),
 		Env:           env,
-	})
+	}
+	if c.Vfox == "main" {
+		// Copied in before the container starts, which Hyper-V isolated
+		// containers (the Windows client default) also allow.
+		req.Files = []tc.ContainerFile{{
+			HostFilePath:      vfoxMain.wait(t),
+			ContainerFilePath: vfoxMainStaged,
+			FileMode:          0o755,
+		}}
+	}
+	// NB: no provider.Close here: the container below terminates through
+	// this very provider in t.Cleanup.
+	ctr, err := provider.RunContainer(ctx, req)
 	if err != nil {
 		t.Fatalf("[%s] start container: %v", prefix, err)
 	}
-	t.Cleanup(func() {
-		_ = ctr.Terminate(context.Background())
+	// The idle pwsh loop ignores the stop signal, so a graceful stop only
+	// waits out its timeout: kill right away instead.
+	common.Cleanup(t, func() {
+		_ = ctr.Terminate(context.Background(), tc.StopTimeout(0))
 	})
 
 	// One overall budget per combo; the CI job timeout stays the outer bound.
