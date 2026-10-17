@@ -31,6 +31,10 @@ flutter --version --no-version-check
 dart --version
 ```
 
+## Channels
+
+See [docs/channels.md](docs/channels.md) for details.
+
 ## Architecture selection
 
 See [docs/arm64.md](docs/arm64.md) for details.

@@ -28,7 +28,8 @@ vfox search flutter
 ## Limits
 
 - **Install by exact version.** OpenHarmony versions sort after the official releases,
-  so `@latest` and the `stable`/`beta`/`dev` channels never select one.
+  so `@latest` never selects one. The `stable` and `beta` channels (see `channels.md`)
+  resolve through Flutter's official release index, which lists no OpenHarmony builds.
 - **No architecture variants.** `flutter@3.41.10-ohos-1.0.0-x64` is not supported.
 - **`linux-arm64` and `windows-arm64`.** Upstream publishes only x64 Dart SDKs, so the first
   `flutter` run fails there (`It appears that the downloaded file is corrupt`).
