@@ -28,7 +28,9 @@ function PLUGIN:PreInstall(ctx)
     local platform = getOsTypeAndArch()
     local targetArch = requestedArch or platform.archType
     local channelKey
-    if arg == "beta" or arg == "dev" or arg == "stable" then
+    -- releases_<os>.json still publishes current_release.dev, but Flutter
+    -- retired the dev channel and it stays at 2.13.0-0.1.pre.
+    if arg == "beta" or arg == "stable" then
         local resp, err = http.get({
             url = getReleasesUrl(platform.osType),
         })

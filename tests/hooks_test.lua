@@ -139,12 +139,20 @@ tests[#tests + 1] = {
     function()
         for _, arch in ipairs({ "arm64", "amd64" }) do
             setup("darwin", arch)
-            for channel, version in pairs({ stable = "3.44.0", beta = "3.44.0-0.1.pre", dev = "3.43.0-0.1.pre" }) do
+            for channel, version in pairs({ stable = "3.44.0", beta = "3.44.0-0.1.pre" }) do
                 installed(channel, version, arch == "amd64" and "x64" or arch)
                 installed(channel .. "-x64", version .. "-x64", "x64")
                 installed(channel .. "-arm64", version .. "-arm64", "arm64")
             end
         end
+    end,
+}
+tests[#tests + 1] = {
+    "the retired dev channel is not resolved",
+    function()
+        setup("darwin", "arm64")
+        equal(PLUGIN:PreInstall({ version = "dev" }), nil)
+        equal(PLUGIN:PreInstall({ version = "dev-x64" }), nil)
     end,
 }
 tests[#tests + 1] = {
