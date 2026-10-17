@@ -39,18 +39,12 @@ func TestReleasesIndex(t *testing.T) {
 	}
 }
 
-func TestVfoxHome(t *testing.T) {
-	profile := `C:\Users\ContainerAdministrator`
-	if got, want := vfoxHome(profile, "latest-official-default", "latest"),
-		`C:\Users\ContainerAdministrator\vfox-e2e-runs\latest-official-default\.vfox`; got != want {
-		t.Errorf("vfoxHome(latest) = %q, want %q", got, want)
-	}
-	got := vfoxHome(profile, "main-official-default", "main")
-	if got != spacedVfoxHome {
-		t.Errorf("vfoxHome(main) = %q, want %q", got, spacedVfoxHome)
-	}
-	if !strings.Contains(got, " ") {
-		t.Errorf("vfoxHome(main) = %q, want a path containing a space", got)
+// The plugin double-quotes Windows paths only when they contain whitespace
+// (lib/git.lua, lib/manifest.lua), so the e2e home must keep its space for
+// every combo to exercise that branch.
+func TestSpacedVfoxHome(t *testing.T) {
+	if !strings.Contains(spacedVfoxHome, " ") {
+		t.Errorf("spacedVfoxHome = %q, want a path containing a space", spacedVfoxHome)
 	}
 }
 

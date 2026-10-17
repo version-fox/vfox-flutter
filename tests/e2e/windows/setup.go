@@ -35,20 +35,12 @@ const (
 
 	// spacedVfoxHome is the default vfox home of a Windows account whose
 	// name contains a space, the layout reported in
-	// https://github.com/version-fox/vfox-flutter/issues/33 .
+	// https://github.com/version-fox/vfox/issues/723 . Every combo runs
+	// against it: vfox handles such paths since 1.0.13
+	// (https://github.com/version-fox/vfox/pull/712), so both latest and
+	// main carry the fix.
 	spacedVfoxHome = `C:\Users\John Doe\.vfox`
 )
-
-// vfoxHome returns the $VFOX_HOME for a combo. The fix for Windows homes
-// containing a space (https://github.com/version-fox/vfox/pull/712) is on
-// vfox main only: released builds still fail on such paths, so only main
-// runs against spacedVfoxHome while the others keep an unspaced slot home.
-func vfoxHome(userProfile, slot, vfoxVersion string) string {
-	if vfoxVersion == "main" {
-		return spacedVfoxHome
-	}
-	return userProfile + `\vfox-e2e-runs\` + slot + `\.vfox`
-}
 
 // pwshQuote renders a single-quoted PowerShell string literal.
 func pwshQuote(s string) string {
@@ -96,15 +88,15 @@ type slotBox struct {
 
 // setupSlotEnv replicates the slot isolation header of setup.ps1:
 // USERPROFILE/TEMP/TMP point under vfox-e2e-runs\<slot>, while VFOX_HOME is
-// a sibling .vfox (spacedVfoxHome for main), so parallel combos on one
-// daemon never share vfox state.
-func setupSlotEnv(ctx context.Context, t *testing.T, ctr tc.Container, slot, vfoxVersion string) slotBox {
+// spacedVfoxHome. Each combo runs in its own container, so combos sharing
+// that path never share vfox state.
+func setupSlotEnv(ctx context.Context, t *testing.T, ctr tc.Container, slot string) slotBox {
 	t.Helper()
 	userProfile := strings.TrimSpace(execOK(ctx, t, ctr, "$env:USERPROFILE"))
 	containerPath := strings.TrimSpace(execOK(ctx, t, ctr, "$env:PATH"))
 	procArch := strings.TrimSpace(execOK(ctx, t, ctr, "$env:PROCESSOR_ARCHITECTURE"))
 
-	home := vfoxHome(userProfile, slot, vfoxVersion)
+	home := spacedVfoxHome
 	box := slotBox{slot: slot}
 	box.slotRoot = userProfile + `\vfox-e2e-runs\` + slot
 	box.tmp = box.slotRoot + `\tmp`
