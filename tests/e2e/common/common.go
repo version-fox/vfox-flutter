@@ -28,8 +28,10 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -178,6 +180,51 @@ func MatrixForArch(arch string) ([]Combo, error) {
 		}
 	}
 	return combos, nil
+}
+
+// SlowestFirst returns combos ordered by how long they usually take, the
+// slowest first, so a bounded run (RunCombos) ends on short combos instead
+// of starting a long one last: non-default mirrors (the CN mirror is far
+// from the CI runners) before the default one, official before ohos. The
+// order is otherwise kept.
+func SlowestFirst(combos []Combo) []Combo {
+	slowness := func(c Combo) int {
+		w := 0
+		if c.Mirror != "default" {
+			w += 2
+		}
+		if c.Flavor == "official" {
+			w++
+		}
+		return w
+	}
+	sorted := slices.Clone(combos)
+	slices.SortStableFunc(sorted, func(a, b Combo) int { return slowness(b) - slowness(a) })
+	return sorted
+}
+
+// RunCombos runs run as one subtest per combo, at most jobs at a time,
+// starting them in the given order: unlike t.Parallel behind a semaphore,
+// whose start order is up to the scheduler, so callers can put the slowest
+// combos first.
+func RunCombos(t *testing.T, combos []Combo, jobs int, run func(t *testing.T, c Combo)) {
+	t.Helper()
+	queue := make(chan Combo, len(combos))
+	for _, c := range combos {
+		queue <- c
+	}
+	close(queue)
+	var wg sync.WaitGroup
+	for range min(max(jobs, 1), len(combos)) {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for c := range queue {
+				t.Run(c.Slug(), func(t *testing.T) { run(t, c) })
+			}
+		}()
+	}
+	wg.Wait()
 }
 
 // MaxJobs bounds parallel containers; honours $E2E_MAX_JOBS and falls back

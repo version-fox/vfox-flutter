@@ -15,7 +15,10 @@
 package common
 
 import (
+	"slices"
+	"sync"
 	"testing"
+	"time"
 )
 
 func setEnv(t *testing.T, kv map[string]string) {
@@ -143,6 +146,53 @@ func TestSanitize(t *testing.T) {
 	want := "latest-official-https___storage_flutter_io_cn"
 	if got != want {
 		t.Errorf("slug = %q, want %q", got, want)
+	}
+}
+
+// The CN mirror and the official SDK download take longest, so they go first.
+func TestSlowestFirst(t *testing.T) {
+	setEnv(t, map[string]string{"VFOX_VERSION": "", "FLAVOR": "", "MIRROR": ""})
+	combos, err := MatrixForArch("amd64")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := comboKeys(SlowestFirst(combos))
+	want := []string{
+		"latest/official/" + DefaultMirrorCN,
+		"latest/ohos/" + DefaultMirrorCN,
+		"latest/official/default",
+		"main/official/default",
+		"latest/ohos/default",
+		"main/ohos/default",
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("SlowestFirst = %v, want %v", got, want)
+	}
+}
+
+// RunCombos runs every combo, never more than jobs at a time.
+func TestRunCombos(t *testing.T) {
+	combos := []Combo{{Vfox: "a"}, {Vfox: "b"}, {Vfox: "c"}, {Vfox: "d"}, {Vfox: "e"}}
+	var mu sync.Mutex
+	var ran []string
+	running, peak := 0, 0
+	RunCombos(t, combos, 2, func(t *testing.T, c Combo) {
+		mu.Lock()
+		ran = append(ran, c.Vfox)
+		running++
+		peak = max(peak, running)
+		mu.Unlock()
+		time.Sleep(10 * time.Millisecond)
+		mu.Lock()
+		running--
+		mu.Unlock()
+	})
+	slices.Sort(ran)
+	if !slices.Equal(ran, []string{"a", "b", "c", "d", "e"}) {
+		t.Errorf("ran %v, want every combo once", ran)
+	}
+	if peak > 2 {
+		t.Errorf("%d combos ran at once, want at most 2", peak)
 	}
 }
 

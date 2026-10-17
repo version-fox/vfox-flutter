@@ -18,6 +18,11 @@ local VFOX_DIR = ".vfox"
 local TMP_DIR = "tmp"
 local ENGINE_PIN = "bin/internal/engine.version"
 local FETCH_ATTEMPTS = 3
+-- A stalled connection never fails on its own, which would leave the retries
+-- above unused: abort a fetch that moves under 1 KB/s for a minute, so the next
+-- attempt reconnects. GIT_HTTP_LOW_SPEED_LIMIT and GIT_HTTP_LOW_SPEED_TIME
+-- still override both values.
+local FETCH_STALL_GUARD = "-c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60"
 local GITHUB_MIRROR_ENV = "VFOX_FLUTTER_GITHUB_MIRROR"
 local GH_BASE = "https://github.com/"
 
@@ -137,7 +142,7 @@ end
 
 function M.fetch(root, remote, ref)
     for _ = 1, FETCH_ATTEMPTS do
-        if git(root, "fetch -q --depth 1 " .. remote .. " " .. ref) then
+        if git(root, FETCH_STALL_GUARD .. " fetch -q --depth 1 " .. remote .. " " .. ref) then
             return true
         end
     end

@@ -18,15 +18,19 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	tc "github.com/testcontainers/testcontainers-go"
 )
 
 // installFlutterVersion installs one Flutter version and selects it globally
-// (was install.sh).
+// (was install.sh). The logged duration exposes slow downloads, the usual
+// cause of a slow combo.
 func installFlutterVersion(ctx context.Context, t *testing.T, ctr tc.Container, version string) {
 	t.Helper()
+	start := time.Now()
 	execRetry(ctx, t, ctr, fmt.Sprintf("vfox install flutter@%s", version),
 		activated(fmt.Sprintf("vfox install flutter@%s", version)))
+	t.Logf("PASS installed flutter@%s in %s", version, time.Since(start).Round(time.Second))
 	execOK(ctx, t, ctr, activated(fmt.Sprintf("vfox use --global flutter@%s", version)))
 }

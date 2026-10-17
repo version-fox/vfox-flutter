@@ -78,9 +78,10 @@ jobs:
       run:
         shell: pwsh
     env:
-      # As many containers at a time as on Linux, now that the engine works
-      # off a local disk (windows-11-arm runs two combos anyway).
-      E2E_MAX_JOBS: '3'
+      # windows-latest runs six combos, slowest first (common.SlowestFirst):
+      # with four at a time the short ones left over finish within the first
+      # wave. windows-11-arm runs two.
+      E2E_MAX_JOBS: '4'
     steps:
       - uses: actions/checkout@v7
       # The engine's data-root takes every image pull, layer commit and
@@ -141,13 +142,16 @@ jobs:
       # Unpacking servercore is the longest setup step and needs nothing but
       # the engine: start it now so that setting up Go and compiling the
       # suite overlap it. The suite's own pull of the image joins this one.
+      # No output redirection: Start-Process then goes through ShellExecute,
+      # so the pull does not inherit this step's output pipes, and the runner
+      # only kills what still holds them when the step ends.
       - name: Pull the base image in the background
         run: |
           $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'amd64' }
           $match = Select-String -Path tests/e2e/windows/Dockerfile -Pattern '^ARG BASE_IMAGE=(.+)-amd64$'
           if (-not $match) { throw 'FAIL tests/e2e/windows/Dockerfile has no ARG BASE_IMAGE=...-amd64 line' }
           $image = $match.Matches[0].Groups[1].Value + "-$arch"
-          Start-Process docker -ArgumentList 'pull', $image -RedirectStandardOutput "$env:RUNNER_TEMP\base-pull.log" -RedirectStandardError "$env:RUNNER_TEMP\base-pull.err.log"
+          Start-Process docker -ArgumentList 'pull', $image
           Write-Output "Pulling $image in the background"
       - uses: actions/setup-go@v7
         with:

@@ -47,7 +47,9 @@ run on Windows ARM64.
 ## Linux ARM64 and Windows ARM64
 
 - **`git` is required.** The checkout runs `git init` / `fetch` / `checkout`
-  against `https://github.com/flutter/flutter.git`.
+  against `https://github.com/flutter/flutter.git`. A fetch that stalls (under
+  1 KB/s for a minute) is abandoned and retried, up to three attempts;
+  `GIT_HTTP_LOW_SPEED_LIMIT` / `GIT_HTTP_LOW_SPEED_TIME` change the threshold.
 - **The first `flutter` run is slow.** It downloads the native Dart SDK and
   builds the Flutter tool, so it needs a network connection.
 - **No checksum is verified.** Git history is the integrity check.

@@ -98,9 +98,11 @@ It also moves the engine's data-root off the runners' slow C: OS disk,
 where image pulls, layer commits and the in-container Flutter installs would
 otherwise crawl: next to the workspace on `windows-latest`'s local D: disk,
 and onto the local NVMe disk `windows-11-arm` ships unformatted. With that,
-`E2E_MAX_JOBS` is 3 there, as on Linux. Unpacking the servercore base image
-remains the longest setup step, so CI starts pulling it in the background
-before it sets up Go and compiles the suite.
+`E2E_MAX_JOBS` is 4 there. Both suites start the combinations slowest first
+(the CN mirror, then the official SDK), so the last ones to start are short.
+Unpacking the servercore base image remains the longest setup step, so CI
+starts pulling it in the background before it sets up Go and compiles the
+suite.
 
 The target image (`tests/e2e/windows/Dockerfile`) unpacks PowerShell 7 and
 MinGit from their portable zips instead of running their installers: Git
