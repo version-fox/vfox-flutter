@@ -32,7 +32,7 @@ What each machine gets for `3.47.4`, `3.47.4-x64` and `3.47.4-arm64` is in [arm6
 | `gitcode.com` | the list of OpenHarmony releases (an API request), and the checkout of an OpenHarmony build | the list when `vfox search` or the `latest` of `vfox install` lists versions, and to install an OpenHarmony build; the checkout for OpenHarmony builds only |
 | `github.com` | the checkout of `flutter/flutter` | Linux ARM64 and Windows ARM64 installs |
 
-`pub.dev` is not the plugin's, but the Flutter tool reaches it when it boots, and the test suite checks that it answers. Installing an official release does not need `gitcode.com`, and a firewall that blocks it costs `vfox search` two quick attempts and a warning, see [troubleshooting.md](troubleshooting.md#gitcodecom-is-rate-limited). Unreleased: release 0.2.4 asks `gitcode.com` for every install as well, and waits for it.
+`pub.dev` is not the plugin's, but the Flutter tool reaches it when it boots, and the test suite checks that it answers. Installing an official release does not need `gitcode.com`, and a firewall that blocks it costs `vfox search` two quick attempts and a warning, see [troubleshooting.md](troubleshooting.md#gitcodecom-is-rate-limited).
 
 ## What the tests cover
 

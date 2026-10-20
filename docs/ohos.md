@@ -58,9 +58,7 @@ releases the plugin listed on 2026-10-21, newest first within each line:
 `3.41.10-ohos-1.0.0 (OpenHarmony)` with no Dart version. That order is why
 `vfox install flutter@latest` never selects one.
 
-The plugin recognizes a release by `-ohos-` or `+ohos-` in the name of its tag. Unreleased: release 0.2.4
-knows `-ohos-` only. It lists the 21 releases above that have it, and
-`vfox install flutter@3.41.9+ohos-1.0.2` ends with `no installable runtime provided`.
+The plugin recognizes a release by `-ohos-` or `+ohos-` in the name of its tag.
 
 ## How an install works
 
@@ -82,8 +80,7 @@ and ten seconds between attempts after any other error.
 `vfox search flutter` asks the same API for the list of releases, but it does not wait for it:
 two attempts, two seconds apart, and HTTP 429 ends them. When the API does not answer, the list
 has no OpenHarmony names and says so on stderr. Installing an official release does not ask
-gitcode.com at all. Unreleased: release 0.2.4 asks it with the same five attempts for every
-command that lists versions, and for every install of an official release.
+gitcode.com at all.
 
 ## Limits
 
@@ -109,9 +106,8 @@ command that lists versions, and for every install of an official release.
   `GIT_HTTP_LOW_SPEED_TIME` change the threshold.
 - **gitcode.com rate-limits its API.** An install of an OpenHarmony build waits for it, see
   above. See [troubleshooting.md](troubleshooting.md#gitcodecom-is-rate-limited).
-- **Line endings.** The checkout sets `core.autocrlf=false`. Unreleased: release 0.2.4 takes your
-  git configuration, and with `core.autocrlf=true` a checkout on Linux has CRLF line endings in
-  `bin/internal/shared.sh`, so that `flutter` stops with `$'\r': command not found`, see
+- **Line endings.** The checkout sets `core.autocrlf=false`, so that a global
+  `core.autocrlf=true` does not put CRLF line endings into a checkout on Linux, see
   [arm64.md](arm64.md#limits).
 
 ### Building OpenHarmony applications

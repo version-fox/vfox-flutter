@@ -39,7 +39,7 @@ vfox install flutter@3.41.10-ohos-1.0.0  # OpenHarmony 构建版本
 - vfox 用索引里的 SHA-256 校验和验证压缩包，并打印 `Verifying checksum ...`。解压之后会删除压缩包。
 - 在 Linux ARM64 和 Windows ARM64 上，插件安装的是 git 标签而不是压缩包，见 [arm64.md](arm64.md)。OpenHarmony 构建版本同样是 git 检出，见 [ohos.md](ohos.md)。两者都不做校验和验证。
 - 安装一个已经存在的名字，会打印 `flutter@3.47.4 is already installed`，不会下载任何东西。
-- 安装官方版本不会访问 gitcode.com。列出版本才会：`vfox search` 和 `vfox install` 的 `latest` 会去问它有哪些 OpenHarmony 版本，最多两次，问不到时会提示，见 [troubleshooting.md](troubleshooting.md#gitcodecom-被限流)。未发布：0.2.4 每次安装也要问它，gitcode.com 限流时最多会等 6.5 分钟，而且什么都不说。
+- 安装官方版本不会访问 gitcode.com。列出版本才会：`vfox search` 和 `vfox install` 的 `latest` 会去问它有哪些 OpenHarmony 版本，最多两次，问不到时会提示，见 [troubleshooting.md](troubleshooting.md#gitcodecom-被限流)。
 
 压缩包很大：2026-10-21 的 3.47.7，Linux x64 是 1.6 GB，Windows x64 是 1.9 GB，macOS 是 2.3 GB。第一次运行 `flutter` 还会再下载东西，见 [troubleshooting.md](troubleshooting.md#看起来不对但其实正常的现象)。
 
@@ -146,8 +146,8 @@ $ vfox install flutter@latest
 Using latest version: 3.47.7-x64
 ```
 
-`latest` 会保持在本机架构上，原因见 [arm64.md](arm64.md)，而且永远不会选中 OpenHarmony 构建版本。未发布：0.2.4 只按版本号里的数字给所有版本排序，所以更新的小版本的 beta（`3.50.0-0.1.pre`）排在所有 `3.47.x` 之前，它的 `latest` 装的就是那个 beta，即 `3.50.0-0.1.pre-x64`。
+`latest` 会保持在本机架构上，原因见 [arm64.md](arm64.md)，而且永远不会选中 OpenHarmony 构建版本。
 
-有些版本会出现不止一次。它们在 Flutter 的索引里就不止一条：有的是从一个渠道晋升到另一个渠道，每个渠道各有一个压缩包（`2.13.0-0.1.pre` 在 beta 和 dev 里都有），这几行装出来的名字相同。有的是版本重新发布过，同一个压缩包对应两个校验和，插件只列其中最新的那条（Flutter 重新发布过的有 `3.13.3`、`3.9.0-0.1.pre` 和 `3.17.0-0.0.pre` 这三个）。未发布：0.2.4 会把所有条目都列出来，装排在最前面的那条；如果装到了旧条目，安装会以 `checksum error` 结束，见 [troubleshooting.md](troubleshooting.md#checksum-error)。
+有些版本会出现不止一次。它们在 Flutter 的索引里就不止一条：有的是从一个渠道晋升到另一个渠道，每个渠道各有一个压缩包（`2.13.0-0.1.pre` 在 beta 和 dev 里都有），这几行装出来的名字相同。有的是版本重新发布过，同一个压缩包对应两个校验和，插件只列其中最新的那条，也就是校验和与文件相符的那条（Flutter 重新发布过的有 `3.13.3`、`3.9.0-0.1.pre` 和 `3.17.0-0.0.pre` 这三个），见 [troubleshooting.md](troubleshooting.md#checksum-error)。
 
 列表有多长取决于机器。2026-10-21 的数量：Linux x64 是 455 个名字（430 个官方版本和 25 个 OpenHarmony 构建版本），macOS 是 717 个（692 个和 25 个，两种架构都在），Windows x64 是 453 个，Linux ARM64 和 Windows ARM64 分别是 743 个和 490 个，它们多出来的 288 个和 37 个是源码安装。列表比这短得多，说明插件有一部分数据来源没读到，见 [troubleshooting.md](troubleshooting.md#网络)。

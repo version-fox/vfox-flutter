@@ -55,9 +55,9 @@ A version is a release as `vfox search flutter` prints it: `3.47.4`, or a beta s
 machine's, and `stable` and `beta` stand for the release the channel points to. Versions are
 matched whole, so `flutter@3.47` does not select the newest 3.47.x. `vfox use`, `vfox uninstall`
 and `vfox exec` take the name that is installed, as `vfox list flutter` shows it.
-`flutter@latest` is the first line of the list, the newest stable release (Unreleased: release
-0.2.4 installs the newest beta). See [docs/versions.md](docs/versions.md) for the names, how
-installs are named and the order of the list.
+`flutter@latest` is the first line of the list, the newest stable release. See
+[docs/versions.md](docs/versions.md) for the names, how installs are named and the order of the
+list.
 
 ## Channels
 
@@ -75,8 +75,7 @@ and what the tests cover.
 
 `flutter@3.47.4-x64` and `flutter@3.47.4-arm64` install a specific build, and a plain name takes
 the one for the machine. Linux ARM64 and Windows ARM64 install from a git tag, and offer the
-releases that run with a native Dart SDK (Unreleased: release 0.2.4 offers older ones, with an
-x64 Dart SDK). See [docs/arm64.md](docs/arm64.md) for details.
+releases that run with a native Dart SDK. See [docs/arm64.md](docs/arm64.md) for details.
 
 ## Mirror
 

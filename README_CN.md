@@ -40,7 +40,7 @@ dart --version
 
 ## 版本与命名
 
-版本就是 `vfox search flutter` 打印出的发布版本：`3.47.4`，或者 `3.50.0-0.1.pre` 这样的 beta。后面加 `-x64` 或 `-arm64`，表示要这个架构而不是本机架构；`stable` 和 `beta` 代表该渠道当前指向的版本。版本必须整串匹配，所以 `flutter@3.47` 不会选中最新的 3.47.x。`vfox use`、`vfox uninstall` 和 `vfox exec` 要写已安装的名字，也就是 `vfox list flutter` 里显示的那个。`flutter@latest` 是列表的第一行，即最新的稳定版（未发布：0.2.4 装的是最新的 beta）。名字、安装后的命名和列表的顺序见 [docs/zh-CN/versions.md](docs/zh-CN/versions.md)。
+版本就是 `vfox search flutter` 打印出的发布版本：`3.47.4`，或者 `3.50.0-0.1.pre` 这样的 beta。后面加 `-x64` 或 `-arm64`，表示要这个架构而不是本机架构；`stable` 和 `beta` 代表该渠道当前指向的版本。版本必须整串匹配，所以 `flutter@3.47` 不会选中最新的 3.47.x。`vfox use`、`vfox uninstall` 和 `vfox exec` 要写已安装的名字，也就是 `vfox list flutter` 里显示的那个。`flutter@latest` 是列表的第一行，即最新的稳定版。名字、安装后的命名和列表的顺序见 [docs/zh-CN/versions.md](docs/zh-CN/versions.md)。
 
 ## 渠道
 
@@ -52,7 +52,7 @@ x64 和 ARM64 上的 Linux、macOS 和 Windows。各平台从哪里安装、需�
 
 ## 架构选择
 
-`flutter@3.47.4-x64` 和 `flutter@3.47.4-arm64` 安装指定架构的构建，不带后缀的名字则安装本机架构的那个。Linux ARM64 和 Windows ARM64 从 git 标签安装，只提供能用原生 Dart SDK 运行的版本（未发布：0.2.4 还会提供更老的版本，它们用的是 x64 的 Dart SDK）。详见 [docs/zh-CN/arm64.md](docs/zh-CN/arm64.md)。
+`flutter@3.47.4-x64` 和 `flutter@3.47.4-arm64` 安装指定架构的构建，不带后缀的名字则安装本机架构的那个。Linux ARM64 和 Windows ARM64 从 git 标签安装，只提供能用原生 Dart SDK 运行的版本。详见 [docs/zh-CN/arm64.md](docs/zh-CN/arm64.md)。
 
 ## 镜像
 

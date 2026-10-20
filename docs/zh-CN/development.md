@@ -38,7 +38,7 @@ vfox 加载 `metadata.lua`，在命令需要时调用 hook，并把 `PLUGIN` 和
 
 - `Available` 为每个名字返回一个表，里面有 `version`、`url`、`sha256`、`key`、`note` 和 `addition`。`key` 是这个版本的 git 提交，渠道就是靠它找到自己的版本：索引里的 `current_release.stable` 是一个提交，`PreInstall` 取 `key` 等于这个提交的条目。`note` 是渠道，显示在圆括号里。`addition` 是 Dart 版本，显示在方括号里。`source = true` 是插件自己给 `-arm64` 源码安装做的标记。
 - `PreInstall` 返回 `version`、`url` 和 `sha256`。`version` 会成为安装的名字。除非请求带了架构后缀，名字里就不带后缀（`3.47.4` 还是 `3.47.4`，`3.47.4-x64` 还是 `3.47.4-x64`），渠道则换成它代表的版本。源码安装返回的 `url` 是本地目录的路径，没有校验和，由 vfox 把这个目录移动到位。
-- `PreInstall` 调用的是 `self:Available({ officialOnly = true })`，所以用不到 vfox 对列表的 12 小时缓存。每次安装都要读索引。`officialOnly` 会略去 OpenHarmony 发布版本：官方版本的安装用不着它们，而且它们来自的 API 被 gitcode.com 限流。vfox 用它自己的上下文调用 `Available`（`vfox search`，以及 `vfox install` 的 `latest`），那样的列表里有它们。未发布：0.2.4 每次安装都会去问 gitcode.com。
+- `PreInstall` 调用的是 `self:Available({ officialOnly = true })`，所以用不到 vfox 对列表的 12 小时缓存。每次安装都要读索引。`officialOnly` 会略去 OpenHarmony 发布版本：官方版本的安装用不着它们，而且它们来自的 API 被 gitcode.com 限流。vfox 用它自己的上下文调用 `Available`（`vfox search`，以及 `vfox install` 的 `latest`），那样的列表里有它们。
 - `PreInstall` 对解析不了的名字返回 `nil`，vfox 会把它报告成 `no installable runtime provided`。失败时它会抛出错误：`error()` 的内容会出现在 `plugin [PreInstall] method error:` 那一行里。
 - 索引里有些版本不止列了一次。`hooks/available.lua` 里的 `newestPublications` 对一个版本的每个压缩包只保留最新（`release_date`）的那条，因为重新上传过的文件，只有最新那条的校验和才是对的（见 [troubleshooting.md](troubleshooting.md#checksum-error)）。不同的版本绝不会合并，在两个渠道里的版本各有一个压缩包，两条都保留。`table.sort` 不是稳定排序，所以比较函数必须能区分任意两个条目，否则相等的条目出来的顺序取决于整个输入，而 `PreInstall` 取第一个匹配的。为此比较函数最后还比较版本和渠道。
 - `PostInstall` 读取 `ctx.sdkInfo[PLUGIN.name]`。清单和 `pubspec.lock` 的修正都在 `pcall` 里运行，所以那里的失败永远不会让安装失败。
@@ -61,7 +61,7 @@ vfox 加载 `metadata.lua`，在命令需要时调用 hook，并把 `PLUGIN` 和
 
 1. OpenHarmony 的名字排在所有其他名字之后（`ohos.isOhosVersion`）。
 2. 本机架构，以及没有后缀的名字，排在另一个架构之前。
-3. stable 渠道的条目（`note == "stable"`）排在其他条目之前，这样第一行 `@latest` 就是最新的稳定版，而不是数字更大的 beta。未发布：0.2.4 没有这条规则。
+3. stable 渠道的条目（`note == "stable"`）排在其他条目之前，这样第一行 `@latest` 就是最新的稳定版，而不是数字更大的 beta。
 4. `compare_versions`，新的在前。
 5. 本机架构排在另一个之前，然后是普通的字符串顺序。
 6. 渠道（`beta` 在 `dev` 之前），用于同一个名字在两个渠道里的情况。
@@ -216,7 +216,7 @@ done
 
 ## 发布
 
-维护者在默认分支上执行 **Actions → Plugin → Run workflow**，填入不带 `v` 的版本号。共享工作流做了什么，见 [README](../../README_CN.md#发布这个插件)。之后 [vfox-plugins](https://github.com/version-fox/vfox-plugins) 里的 `plugins/flutter.json` 会显示 `vfox add flutter` 提供的版本，[changes.md](changes.md) 里也应当有这个版本的条目。
+维护者在默认分支上执行 **Actions → Plugin → Run workflow**，填入不带 `v` 的版本号。共享工作流做了什么，见 [README](../../README_CN.md#发布这个插件)。之后 [vfox-plugins](https://github.com/version-fox/vfox-plugins) 里的 `plugins/flutter.json` 会显示 `vfox add flutter` 提供的版本。这比发布晚几个小时：0.2.2 晚了 1 小时 22 分钟，0.2.3 晚了 4 小时，0.2.4 晚了 2 小时 28 分钟。然后把文档更新到位，两种语言都要：把 [changes.md](changes.md) 里“未发布”下的条目挪到新版本下面，标上发布当天的日期，在它的第一段里把新版本写成最新的发布版，把它写进 [flutter-upgrade.md](flutter-upgrade.md#检查如何进行) 里清单的 `plugin_version`，并去掉其他页面里的“未发布”标记，见[编写文档](#编写文档)。
 
 ## 编写文档
 

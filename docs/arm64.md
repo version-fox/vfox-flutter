@@ -144,10 +144,6 @@ and `flutter@1.20.0-x64` on Linux ARM64 is for where you can run x64 programs. T
 data in `lib/source.lua`, and [development.md](development.md#refreshing-the-dart-sdk-table)
 shows how to check it.
 
-Unreleased: release 0.2.4 offers a `-arm64` source install of every release that has an x64
-build, and the older ones get the x64 Dart SDK. On Windows ARM64 it runs through the emulation,
-under a name that says arm64. On Linux ARM64 an ARM64 machine does not run it.
-
 ## Limits
 
 ### Linux ARM64 and Windows ARM64
@@ -171,12 +167,12 @@ under a name that says arm64. On Linux ARM64 an ARM64 machine does not run it.
 - **Your git configuration applies.** The plugin runs `git` as you do, except for line
   endings: it sets `core.autocrlf=false` in the checkout, so that a global `true` (which the Git
   for Windows installer proposes by default) cannot write Flutter's shell scripts with CRLF
-  line endings. Unreleased: release 0.2.4 takes your setting. With `core.autocrlf=true`, the
-  checkout of a Linux ARM64 install or of an OpenHarmony build on Linux has CRLF in
-  `bin/internal/shared.sh` and Flutter's other `.sh` files, because Flutter's `.gitattributes`
-  forces LF only for `bin/flutter`, `bin/flutter-dev` and `bin/dart`, and the first `flutter` run
-  stops with `bin/internal/shared.sh: line 5: $'\r': command not found`. Set
-  `git config --global core.autocrlf input` (or `false`), uninstall the version and install it
-  again.
+  line endings. Flutter's `.gitattributes` forces LF only for `bin/flutter`, `bin/flutter-dev`
+  and `bin/dart`, so with `true` the checkout of a Linux ARM64 install or of an OpenHarmony
+  build on Linux would have CRLF in `bin/internal/shared.sh` and Flutter's other `.sh` files,
+  and the first `flutter` run would stop with
+  `bin/internal/shared.sh: line 5: $'\r': command not found`. Releases before 0.2.5 take your
+  setting, see
+  [troubleshooting.md](troubleshooting.md#bininternalsharedsh-line-5-r-command-not-found).
 - **Leftovers.** A failed install leaves `.vfox/tmp/<name>` behind, see
   [How a source install works](#how-a-source-install-works).

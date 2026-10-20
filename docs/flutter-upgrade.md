@@ -76,7 +76,7 @@ recording the expected git HEAD, and re-checks it on each `vfox use`.
 The manifest is a small JSON file in the root of the SDK, `flutter-3.47.4/.vfox-manifest`:
 
 ```json
-{"expected_head":"9584c6713b324636289d067944a46fd6b49df14b","installed_at":1792523751,"plugin":"vfox-flutter","plugin_version":"0.2.4","version":"3.47.4"}
+{"expected_head":"9584c6713b324636289d067944a46fd6b49df14b","installed_at":1792523751,"plugin":"vfox-flutter","plugin_version":"0.2.5","version":"3.47.4"}
 ```
 
 `expected_head` is what `git rev-parse HEAD` printed right after vfox unpacked the SDK, and

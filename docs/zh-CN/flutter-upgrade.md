@@ -64,7 +64,7 @@ To upgrade to a newer version, use vfox directly:
 清单是 SDK 根目录里的一个小 JSON 文件，`flutter-3.47.4/.vfox-manifest`：
 
 ```json
-{"expected_head":"9584c6713b324636289d067944a46fd6b49df14b","installed_at":1792523751,"plugin":"vfox-flutter","plugin_version":"0.2.4","version":"3.47.4"}
+{"expected_head":"9584c6713b324636289d067944a46fd6b49df14b","installed_at":1792523751,"plugin":"vfox-flutter","plugin_version":"0.2.5","version":"3.47.4"}
 ```
 
 `expected_head` 是 vfox 刚解压完 SDK 时 `git rev-parse HEAD` 打印的结果，`installed_at` 是安装时间，单位是自 1970 年以来的秒数。`vfox use` 时检查会再执行一次 `git rev-parse HEAD`，并比较两者。压缩包安装、源码安装和 OpenHarmony 构建版本都会有清单。在 SDK 里执行 `git status`，这个文件会显示为未跟踪。

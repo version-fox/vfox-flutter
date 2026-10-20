@@ -39,7 +39,7 @@ The plugin lists the releases from Flutter 1.17 (April 2020) on. Flutter publish
 - vfox verifies the archive against the SHA-256 checksum from the index and prints `Verifying checksum ...`. It removes the archive after unpacking.
 - On Linux ARM64 and Windows ARM64 the plugin installs a git tag instead of an archive, see [arm64.md](arm64.md). OpenHarmony builds are git checkouts as well, see [ohos.md](ohos.md). Neither is verified against a checksum.
 - Installing a name that is already there prints `flutter@3.47.4 is already installed` and downloads nothing.
-- Installing an official release does not contact gitcode.com. Listing versions does: `vfox search`, and the `latest` of `vfox install`, ask it for the OpenHarmony releases, twice at most, and say so when it does not answer, see [troubleshooting.md](troubleshooting.md#gitcodecom-is-rate-limited). Unreleased: release 0.2.4 asks it for every install as well, waits up to 6.5 minutes when gitcode.com is rate-limited, and says nothing.
+- Installing an official release does not contact gitcode.com. Listing versions does: `vfox search`, and the `latest` of `vfox install`, ask it for the OpenHarmony releases, twice at most, and say so when it does not answer, see [troubleshooting.md](troubleshooting.md#gitcodecom-is-rate-limited).
 
 An archive is large: 3.47.7 on 2026-10-21 was 1.6 GB for Linux x64, 1.9 GB for Windows x64 and 2.3 GB for macOS. The first `flutter` run downloads more, see [troubleshooting.md](troubleshooting.md#things-that-look-wrong-and-are-not).
 
@@ -146,8 +146,8 @@ $ vfox install flutter@latest
 Using latest version: 3.47.7-x64
 ```
 
-`latest` keeps to the architecture of this machine, as [arm64.md](arm64.md) explains, and never selects an OpenHarmony build. Unreleased: release 0.2.4 sorts every release by its numbers alone, so a beta of a later minor release (`3.50.0-0.1.pre`) comes before every `3.47.x`, and its `latest` installs that beta, as `3.50.0-0.1.pre-x64`.
+`latest` keeps to the architecture of this machine, as [arm64.md](arm64.md) explains, and never selects an OpenHarmony build.
 
-A few versions appear more than once. They are in Flutter's index more than once, because a release was promoted from one channel to another and has an archive in each (`2.13.0-0.1.pre` is listed for beta and for dev), and the lines install the same name. A release that was published again has the same archive under two checksums, and the plugin lists only the newest entry of it (`3.13.3`, `3.9.0-0.1.pre` and `3.17.0-0.0.pre` are the three that Flutter published again). Unreleased: release 0.2.4 lists all the entries, takes the one that happens to sort first, and an install that takes an old one ends with `checksum error`, see [troubleshooting.md](troubleshooting.md#checksum-error).
+A few versions appear more than once. They are in Flutter's index more than once, because a release was promoted from one channel to another and has an archive in each (`2.13.0-0.1.pre` is listed for beta and for dev), and the lines install the same name. A release that was published again has the same archive under two checksums, and the plugin lists only the newest entry of it, the one whose checksum matches the file (`3.13.3`, `3.9.0-0.1.pre` and `3.17.0-0.0.pre` are the three that Flutter published again), see [troubleshooting.md](troubleshooting.md#checksum-error).
 
 The length of the list depends on the machine. On 2026-10-21 it had 455 names on Linux x64 (430 official releases and 25 OpenHarmony builds), 717 on macOS (692 and 25, with both architectures), 453 on Windows x64, and 743 and 490 on Linux ARM64 and Windows ARM64, which add 288 and 37 source installs. A list that is much shorter than that means the plugin could not read part of its sources, see [troubleshooting.md](troubleshooting.md#network).

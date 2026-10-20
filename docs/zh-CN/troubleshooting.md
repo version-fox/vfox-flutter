@@ -19,8 +19,8 @@ failed to install flutter
 - 这个名字不是一个发布版本。`flutter@3.47` 和 `flutter@3` 不会补全成最新的 3.47.x 或 3.x，名字也区分大小写（`flutter@Stable`）。到 `vfox search flutter` 里查一下，见 [versions.md](versions.md)。
 - `dev`：Flutter 已经废弃这个渠道，见 [channels.md](channels.md#dev)。
 - 架构后缀在这台机器上不存在：Linux x64 和 Windows x64 上的 `-arm64`，没有架构元数据的版本带任何后缀（`1.22.6-x64`），或者 Apple 芯片上只有 x64 构建的老版本不带后缀（`flutter@2.10.5` 要写成 `flutter@2.10.5-x64`）。见 [arm64.md](arm64.md)。
-- 未发布：比第一个能用原生 Dart SDK 运行的版本更老的版本，在 Linux ARM64（`flutter@1.20.0`）或 Windows ARM64（`flutter@3.43.0-0.3.pre`）上。0.2.4 会用 x64 的 Dart SDK 装上它们，见 [arm64.md](arm64.md#能原生运行的发布版本)。写成 `-x64` 的名字装的是压缩包。
-- 带 `+ohos-` 的 OpenHarmony 名字（`3.41.9+ohos-1.0.2`），在 0.2.4 上，它只认 `-ohos-` 的名字。未发布：两种都认，见 [ohos.md](ohos.md#名称与发布版本)。
+- 比第一个能用原生 Dart SDK 运行的版本更老的版本，在 Linux ARM64（`flutter@1.20.0`）或 Windows ARM64（`flutter@3.43.0-0.3.pre`）上，见 [arm64.md](arm64.md#能原生运行的发布版本)。写成 `-x64` 的名字装的是压缩包。
+- 带 `+ohos-` 的 OpenHarmony 名字（`3.41.9+ohos-1.0.2`），而插件比 0.2.5 更老，不认识 `+ohos-`。请更新插件，见 [ohos.md](ohos.md#名称与发布版本)。
 
 ### `flutter@stable is not installed`
 
@@ -57,7 +57,7 @@ failed to install flutter
 
 vfox 下载了压缩包，它的 SHA-256 和 Flutter 发布索引里的不一样。用镜像的话，要检查镜像提供的文件是否与它提供的索引一致。不用镜像时，这曾经是索引数据本身的问题：它把 `3.13.3`、`3.9.0-0.1.pre` 和 `3.17.0-0.0.pre` 各列了两三次，同一个文件，每条的校验和都不同。Flutter 重新上传了文件，却把旧的条目留着了。最新那条的校验和才是对的（在 Linux 上下载了这三个压缩包验证过）。
 
-插件现在只列这种文件最新的那一条，所以这三个版本都能装。未发布：0.2.4 把所有条目都列出来，装排在最前面的那条，条目相同时顺序是任意的，还取决于列表的其余部分，比如其中有多少个 OpenHarmony 版本。2026-10-21 时，它在 Linux x64 上三个全都取了旧条目，在 macOS 和 Windows 上也有一部分，安装就会像上面这样结束。请装它旁边的版本（用 `3.13.2` 或 `3.13.4` 代替 `3.13.3`），或者更新插件。没有跳过校验的开关。
+插件现在只列这种文件最新的那一条，所以这三个版本都能装。0.2.5 之前的版本把所有条目都列出来，装排在最前面的那条。在 0.2.4 里，条目相同时顺序是任意的，还取决于列表的其余部分，比如其中有多少个 OpenHarmony 版本。2026-10-21 时，它在 Linux x64 上三个全都取了旧条目，在 macOS 和 Windows 上也有一部分，安装就会像上面这样结束。请更新插件，或者装它旁边的版本（用 `3.13.2` 或 `3.13.4` 代替 `3.13.3`）。没有跳过校验的开关。
 
 ### `Warning: flutter SDK at ... has drifted from the version vfox installed.`
 
@@ -65,7 +65,7 @@ vfox 下载了压缩包，它的 SHA-256 和 Flutter 发布索引里的不一样
 
 ### `flutter does not support the 386 architecture`
 
-插件只能在 x64 和 ARM64 上运行。vfox 会把它自己二进制的 CPU（`386`、`arm`、`riscv64`、`loong64` 等）告诉插件，提示里会写出它，比如 `flutter does not support the arm architecture`。`vfox search` 和官方版本的安装都会被它拦住。见 [platforms.md](platforms.md)。未发布：0.2.4 打印的内容一样，只是没有空格，是 `flutter does not support386architecture`。
+插件只能在 x64 和 ARM64 上运行。vfox 会把它自己二进制的 CPU（`386`、`arm`、`riscv64`、`loong64` 等）告诉插件，提示里会写出它，比如 `flutter does not support the arm architecture`。`vfox search` 和官方版本的安装都会被它拦住。见 [platforms.md](platforms.md)。0.2.5 之前的版本打印的内容一样，只是没有空格：`flutter does not support386architecture`。
 
 ### 源码安装：Linux ARM64 和 Windows ARM64
 
@@ -89,7 +89,7 @@ vfox 下载了压缩包，它的 SHA-256 和 Flutter 发布索引里的不一样
 | 提示 | 含义 |
 | --- | --- |
 | `OpenHarmony releases are unavailable from https://gitcode.com/api/v5/...: HTTP 429` | 安装 OpenHarmony 构建版本时：五次读取发布版本列表都失败了。冒号后面是最后一次的错误，这里是 gitcode.com 的限流，见[下文](#gitcodecom-被限流)。列出版本时永远不会打印这条，它会打印下面那条警告，然后在没有 OpenHarmony 版本的情况下继续 |
-| `Warning: the OpenHarmony releases could not be read from gitcode.com (<error>), so only the official releases are listed.` | 两次尝试都没拿到列表时，由 `vfox search` 和 `vfox install` 的 `latest` 打印到 stderr。官方版本照常列出，OpenHarmony 构建版本仍然可以按名字安装。未发布：0.2.4 什么都不打印，而且先要等最多 6.5 分钟 |
+| `Warning: the OpenHarmony releases could not be read from gitcode.com (<error>), so only the official releases are listed.` | 两次尝试都没拿到列表时，由 `vfox search` 和 `vfox install` 的 `latest` 打印到 stderr。官方版本照常列出，OpenHarmony 构建版本仍然可以按名字安装。 |
 | `flutter 3.47.7-ohos-1.0.0 is not an OpenHarmony release` | 名字里有 `-ohos-`，但 gitcode.com 上没有叫这个名字的发布版本 |
 | `flutter 3.41.10-ohos-1.0.0 has no architecture variants` | 名字后面带了 `-x64` 或 `-arm64` |
 | `failed to fetch <commit> from https://gitcode.com/CPF-Flutter/flutter_flutter.git` | 三次拉取全都失败了 |
@@ -98,7 +98,7 @@ vfox 下载了压缩包，它的 SHA-256 和 Flutter 发布索引里的不一样
 
 ### `bin/internal/shared.sh: line 5: $'\r': command not found`
 
-在 Linux 上做源码安装（Linux ARM64，或者 OpenHarmony 构建版本）后，第一次运行 `flutter` 就这样失败，说明检出的是 CRLF 换行，原因是你的 git 配置里有 `core.autocrlf=true`。插件现在会在检出里设置 `core.autocrlf=false`。未发布：0.2.4 用的是你的设置，请执行 `git config --global core.autocrlf input`，卸载这个版本再重新安装，见 [arm64.md](arm64.md#限制)。
+在 Linux 上做源码安装（Linux ARM64，或者 OpenHarmony 构建版本）后，第一次运行 `flutter` 就这样失败，说明检出的是 CRLF 换行，原因是你的 git 配置里有 `core.autocrlf=true`。从 0.2.5 起，插件会在检出里设置 `core.autocrlf=false`，更老的版本用的是你的设置。请更新插件，或者执行 `git config --global core.autocrlf input`，并卸载这个版本再重新安装：已有的安装保留着 CRLF 换行。见 [arm64.md](arm64.md#限制)。
 
 ### `Building flutter tool...` 和 `It appears that the downloaded file is corrupt`
 
@@ -148,7 +148,7 @@ gitcode.com 限制匿名客户端的请求次数。超出限制时它回答 HTTP
   gitcode.com 无法访问时同样只花这两次尝试，所以连接立刻失败的话大约 2 秒（经过一个拒绝连接的代理测得 2.1 秒）。之后 `vfox search flutter` 会在没有 OpenHarmony 名字的情况下缓存 12 小时，`vfox config cache.availableHookDuration 0` 可以关掉缓存。
 - 安装 OpenHarmony 构建版本最多尝试五次，遇到 429 后依次等 30、60、120 和 180 秒，所以它可能等 6.5 分钟而且什么都不打印。
 
-未发布：0.2.4 对每个列出版本的命令，以及每次安装（包括官方版本），都要这样等。2026-10-21 gitcode.com 回答 429 的时候测得：
+0.2.4 对每个列出版本的命令，以及每次安装（包括官方版本），都要这样等。2026-10-21 gitcode.com 回答 429 的时候测得：
 
 | 命令 | 耗时 | 结果 |
 | --- | --- | --- |
@@ -159,9 +159,9 @@ gitcode.com 限制匿名客户端的请求次数。超出限制时它回答 HTTP
 
 ## 看起来不对但其实正常的现象
 
-- **`vfox install flutter@latest` 装出来的是 `3.47.7-x64`，不是 `3.47.7`。** `latest` 是 `vfox search flutter` 的第一行，也就是最新的稳定版，而且它带着架构后缀，所以你再装一次 `stable` 的话，同一个 Flutter 会装两份，见 [versions.md](versions.md#搜索)。未发布：0.2.4 装的是最新的 beta。
+- **`vfox install flutter@latest` 装出来的是 `3.47.7-x64`，不是 `3.47.7`。** `latest` 是 `vfox search flutter` 的第一行，也就是最新的稳定版，而且它带着架构后缀，所以你再装一次 `stable` 的话，同一个 Flutter 会装两份，见 [versions.md](versions.md#搜索)。0.2.4 装的是最新的 beta。
 - **一个版本在 `vfox search flutter` 里出现了不止一次。** Flutter 的索引里它在不止一个渠道里，见 [versions.md](versions.md#搜索)。
-- **未发布：`vfox search flutter` 或 `vfox install` 等了好几分钟，什么也没打印。** 0.2.4 在 gitcode.com 限制它的 API 时会等，见 [gitcode.com 被限流](#gitcodecom-被限流)。命令自己会结束。
+- **安装 OpenHarmony 构建版本等了好几分钟，什么也没打印。** gitcode.com 限制它的 API 时，插件会等，见 [gitcode.com 被限流](#gitcodecom-被限流)。命令自己会结束。0.2.4 对 `vfox search flutter` 和每次安装也是这样。
 - **你装过的版本在 `(installed)` 标记里没有。** 标记跟的是列表里打印的名字，比如 `3.47.4-x64`，而不是你装的不带后缀的名字。以 `vfox list flutter` 为准。
 - **预期的版本在 `vfox search` 里没有。** vfox 会把结果缓存 12 小时。`vfox config cache.availableHookDuration 0` 可以关掉缓存。也可能是 Flutter 的索引里还没有它，或者你的镜像那份里还没有。
 - **`3.47.4` 和 `3.47.4-x64` 是两份安装。** 在 x64 机器上它们是同一个 Flutter，见 [versions.md](versions.md#已安装的名称)。

@@ -32,7 +32,7 @@ OpenHarmony 构建版本在每种机器上都是从 gitcode.com 检出的，见 
 | `gitcode.com` | OpenHarmony 版本的列表（一个 API 请求），以及 OpenHarmony 构建版本的检出 | `vfox search` 或 `vfox install` 的 `latest` 列出版本时要列表，安装 OpenHarmony 构建版本时也要；检出只在 OpenHarmony 构建版本时 |
 | `github.com` | `flutter/flutter` 的检出 | Linux ARM64 和 Windows ARM64 的安装 |
 
-`pub.dev` 不是插件要连的，但 Flutter 工具启动时会连它，测试套件也会检查它能否访问。安装官方版本不需要 `gitcode.com`，防火墙挡住它，也只是让 `vfox search` 快速试两次并给出一条警告，见 [troubleshooting.md](troubleshooting.md#gitcodecom-被限流)。未发布：0.2.4 每次安装也要问 `gitcode.com`，并且会等它。
+`pub.dev` 不是插件要连的，但 Flutter 工具启动时会连它，测试套件也会检查它能否访问。安装官方版本不需要 `gitcode.com`，防火墙挡住它，也只是让 `vfox search` 快速试两次并给出一条警告，见 [troubleshooting.md](troubleshooting.md#gitcodecom-被限流)。
 
 ## 测试覆盖的范围
 

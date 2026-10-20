@@ -51,7 +51,7 @@ The version a channel stands for is the newest `(stable)` or `(beta)` line of `v
 
 ## `latest` is not a channel
 
-`vfox install flutter@latest` is vfox's own shorthand for the first line of `vfox search flutter`. That line is the newest stable release, with an architecture suffix (`3.47.7-x64` on 2026-10-21), so `latest` and `stable` install the same Flutter under different names (`3.47.7-x64` and `3.47.7`). Prefer `stable`, see [versions.md](versions.md#searching). Unreleased: release 0.2.4 lists the pre-releases among the stable releases by their numbers, so its first line is the newest beta, and its `latest` installed `3.50.0-0.1.pre-x64`.
+`vfox install flutter@latest` is vfox's own shorthand for the first line of `vfox search flutter`. That line is the newest stable release, with an architecture suffix (`3.47.7-x64` on 2026-10-21), so `latest` and `stable` install the same Flutter under different names (`3.47.7-x64` and `3.47.7`). Prefer `stable`, see [versions.md](versions.md#searching).
 
 ## `dev`
 
