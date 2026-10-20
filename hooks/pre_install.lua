@@ -57,7 +57,8 @@ function PLUGIN:PreInstall(ctx)
     end
 
     local legacy
-    for _, info in ipairs(self:Available({})) do
+    -- Official releases only: gitcode.com has nothing to say about them, and rate-limits its API.
+    for _, info in ipairs(self:Available({ officialOnly = true })) do
         local version, arch = splitVersionAndArch(info.version)
         local matches = channelKey and info.key == channelKey or (channelKey == nil and version == arg)
         if matches then

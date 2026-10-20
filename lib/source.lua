@@ -14,12 +14,34 @@
 
 local git = require("git")
 
+require("util")
+
 local REPO = "flutter/flutter"
 local CLONE_URL = "https://github.com/%s.git"
 
 local SOURCE_INSTALL_PLATFORMS = {
     ["linux/arm64"] = true,
     ["windows/arm64"] = true,
+}
+
+-- The oldest release whose Flutter tool runs with a native Dart SDK on the machine, so that an
+-- `-arm64` source install is what its name says. The tool downloads the Dart SDK on its first
+-- run, and it takes the arm64 one only when two things hold: the release's own bootstrap script
+-- (bin/internal/update_dart_sdk.sh, update_dart_sdk.ps1 on Windows) asks for it, and Flutter's
+-- storage has it (flutter_infra_release/flutter/<engine revision>/dart-sdk-<os>-arm64.zip).
+-- Checked on 2026-10-21 for the 300 releases that have an x64 build, 1.20.0 to 3.50.0-0.1.pre:
+--   Linux: the script asks for the x64 SDK up to 2.0.6, which an ARM64 machine does not run, and
+--   for the arm64 one from 2.2.0 on. Storage has the arm64 SDK from 2.0.0 on.
+--   Windows: the script asks for the arm64 SDK from 3.20.0-1.1.pre on, and falls back to the x64
+--   one, which Windows runs through its emulation, when storage has none. Storage has it from
+--   3.44.0-0.1.pre on, and for seven older betas (3.11.0-0.0.pre, 3.17.0-0.0.pre,
+--   3.18.0-0.1.pre, 3.19.0-0.1.pre, 3.20.0-1.1.pre, 3.21.0-0.0.pre and 3.30.0-0.1.pre), of which
+--   the first four are older than the script that would use it. The three that run natively are
+--   left out with the rest.
+-- Older releases keep their x64 archives; this decides which releases get an `-arm64` name.
+local OLDEST_NATIVE = {
+    ["linux/arm64"] = "2.2.0",
+    ["windows/arm64"] = "3.44.0-0.1.pre",
 }
 
 local M = {}
@@ -32,10 +54,16 @@ function M.supports(osType, archType)
     return SOURCE_INSTALL_PLATFORMS[osType .. "/" .. archType] == true
 end
 
-function M.list(releases)
+function M.list(releases, osType, archType)
+    local oldest = OLDEST_NATIVE[tostring(osType) .. "/" .. tostring(archType)]
     local result = {}
     for _, info in ipairs(releases or {}) do
-        if type(info.version) == "string" and string.sub(info.version, 1, 1) ~= "v" and info.dart_sdk_arch == "x64" then
+        if
+            type(info.version) == "string"
+            and string.sub(info.version, 1, 1) ~= "v"
+            and info.dart_sdk_arch == "x64"
+            and (oldest == nil or compare_versions(info.version, oldest) >= 0)
+        then
             table.insert(result, {
                 version = info.version .. "-arm64",
                 url = M.repoUrl(),

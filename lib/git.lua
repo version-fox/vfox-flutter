@@ -137,7 +137,13 @@ function M.init(root)
     if not exec("git init -q " .. quote(root)) then
         return false
     end
-    return git(root, "config core.longpaths true")
+    -- core.autocrlf: the checkout takes the user's git configuration, and a global
+    -- `core.autocrlf=true` (what the Git for Windows installer proposes) writes Flutter's shell
+    -- scripts with CRLF line endings, because its .gitattributes forces LF only for bin/flutter,
+    -- bin/flutter-dev and bin/dart. Then `flutter` dies on Linux with
+    -- `$'\r': command not found`. With `false` core.eol decides, which is LF on Linux. On
+    -- Windows it is native, so CRLF, and `false` writes the same files `true` does there.
+    return git(root, "config core.longpaths true") and git(root, "config core.autocrlf false")
 end
 
 function M.fetch(root, remote, ref)

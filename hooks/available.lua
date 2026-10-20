@@ -21,10 +21,10 @@ local MAX_ATTEMPTS = 3
 local RETRY_DELAY = 5
 
 require("util")
-local function releases(type)
+local function releases(platform)
     local resp, err
     for attempt = 1, MAX_ATTEMPTS do
-        resp, err = http.get({ url = getReleasesUrl(type.osType) })
+        resp, err = http.get({ url = getReleasesUrl(platform.osType) })
         if resp ~= nil and resp.status_code == 200 then
             return json.decode(resp.body)
         end
@@ -35,16 +35,48 @@ local function releases(type)
     error("get version failed: " .. tostring(err) .. " (status " .. tostring(resp and resp.status_code) .. ")")
 end
 
-function PLUGIN:Available(ctx)
-    local type = getOsTypeAndArch()
-    local body = releases(type)
+-- The index lists some releases more than once. A release that was promoted from one channel to
+-- another has an archive in each. One that was published again has the same archive under two
+-- checksums, and only the newest entry has the checksum of the file that is there now: the older
+-- one fails the verification of the download. Keep the newest entry of each archive of a
+-- version, in the order the index has them. Different versions never merge.
+local function newestPublications(entries)
+    local newest, order = {}, {}
+    for _, info in ipairs(entries) do
+        local key = info.archive and (info.version .. "|" .. info.archive) or info
+        local seen = newest[key]
+        if seen == nil then
+            newest[key] = info
+            table.insert(order, key)
+        elseif (info.release_date or "") > (seen.release_date or "") then
+            newest[key] = info
+        end
+    end
     local result = {}
+    for _, key in ipairs(order) do
+        table.insert(result, newest[key])
+    end
+    return result
+end
+
+-- The list `vfox search` shows, and `vfox install flutter@latest` takes the first line of.
+-- PreInstall asks for the official releases only (ctx.officialOnly): installing one has no use
+-- for the OpenHarmony list, and must not wait for gitcode.com to answer it.
+function PLUGIN:Available(ctx)
+    local platform = getOsTypeAndArch()
+    local body = releases(platform)
+    local kept = {}
     for _, info in ipairs(body.releases) do
-        local version = info.version
-        local oldVersion = string.sub(version, 1, 1) == "v"
+        local oldVersion = string.sub(info.version, 1, 1) == "v"
         if oldVersion then
             break
         end
+        table.insert(kept, info)
+    end
+    kept = newestPublications(kept)
+    local result = {}
+    for _, info in ipairs(kept) do
+        local version = info.version
         local dartArch = info.dart_sdk_arch
         version = dartArch and (version .. "-" .. dartArch) or version
         table.insert(result, {
@@ -61,11 +93,22 @@ function PLUGIN:Available(ctx)
             },
         })
     end
-    for _, info in ipairs(ohos.list()) do
-        table.insert(result, info)
+    if not (type(ctx) == "table" and ctx.officialOnly) then
+        local listed, err = ohos.list()
+        if listed == nil then
+            io.stderr:write(
+                "Warning: the OpenHarmony releases could not be read from gitcode.com ("
+                    .. tostring(err)
+                    .. "), so only the official releases are listed.\n"
+            )
+        else
+            for _, info in ipairs(listed) do
+                table.insert(result, info)
+            end
+        end
     end
-    if source.supports(type.osType, type.archType) then
-        for _, info in ipairs(source.list(body.releases)) do
+    if source.supports(platform.osType, platform.archType) then
+        for _, info in ipairs(source.list(kept, platform.osType, platform.archType)) do
             table.insert(result, info)
         end
     end
@@ -79,21 +122,34 @@ function PLUGIN:Available(ctx)
         -- no architecture metadata, so @latest cannot select a foreign build.
         local _, aArch = splitVersionAndArch(a.version)
         local _, bArch = splitVersionAndArch(b.version)
-        local aDefault = aArch == nil or aArch == type.archType
-        local bDefault = bArch == nil or bArch == type.archType
+        local aDefault = aArch == nil or aArch == platform.archType
+        local bDefault = bArch == nil or bArch == platform.archType
         if aDefault ~= bDefault then
             return aDefault
+        end
+        -- Stable releases before pre-releases, so @latest is the newest stable release and
+        -- not a beta that happens to have a higher number.
+        local aStable = a.note == "stable"
+        local bStable = b.note == "stable"
+        if aStable ~= bStable then
+            return aStable
         end
         local order = compare_versions(a.version, b.version)
         if order ~= 0 then
             return order > 0
         end
-        if aArch == type.archType then
-            return bArch ~= type.archType
-        elseif bArch == type.archType then
-            return false
+        local aNative = aArch == platform.archType
+        local bNative = bArch == platform.archType
+        if aNative ~= bNative then
+            return aNative
         end
-        return a.version < b.version
+        if a.version ~= b.version then
+            return a.version < b.version
+        end
+        -- The same name in two channels (a release promoted from beta to stable, or from dev to
+        -- beta): a fixed order, so that equal entries do not come out in a different one
+        -- whenever the rest of the list changes.
+        return (a.note or "") < (b.note or "")
     end)
     return result
 end
