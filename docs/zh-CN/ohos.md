@@ -45,7 +45,7 @@ vfox search flutter
 
 `vfox search flutter` 把它们排在最后，在所有官方版本之后，每个显示为 `3.41.10-ohos-1.0.0 (OpenHarmony)`，没有 Dart 版本。因为这个顺序，`vfox install flutter@latest` 永远不会选中其中一个。
 
-插件靠标签名里有 `-ohos-` 或 `+ohos-` 来认出一个发布版本。未发布：0.2.4 只认 `-ohos-`，列出的是上表里带它的 21 个，`vfox install flutter@3.41.9+ohos-1.0.2` 会以 `no installable runtime provided` 结束。
+插件靠标签名里有 `-ohos-` 或 `+ohos-` 来认出一个发布版本。
 
 ## 安装如何进行
 
@@ -55,7 +55,7 @@ vfox search flutter
 
 得到的是只含一个提交的浅克隆，3.41.10-ohos-1.0.0 是 224 MB，网速很快时安装用了 19 秒。安装会等待 gitcode.com：它的 API 回答 HTTP 429（被限流）时，插件在五次尝试之间依次等 30、60、120 和 180 秒，遇到其他错误则每次间隔十秒。
 
-`vfox search flutter` 向同一个 API 取发布版本的列表，但不会等它：最多两次，间隔两秒，遇到 HTTP 429 就停。API 没有响应时，列表里没有 OpenHarmony 的名字，并在 stderr 上说明这一点。安装官方版本完全不会访问 gitcode.com。未发布：0.2.4 对每个列出版本的命令，以及每次官方版本的安装，都会用同样的五次尝试去问它。
+`vfox search flutter` 向同一个 API 取发布版本的列表，但不会等它：最多两次，间隔两秒，遇到 HTTP 429 就停。API 没有响应时，列表里没有 OpenHarmony 的名字，并在 stderr 上说明这一点。安装官方版本完全不会访问 gitcode.com。
 
 ## 限制
 
@@ -68,7 +68,7 @@ vfox search flutter
 - **镜像不起作用。** `FLUTTER_STORAGE_BASE_URL` 和 `VFOX_FLUTTER_GITHUB_MIRROR`（见 [mirror.md](mirror.md)）只影响官方 SDK 的下载；OpenHarmony 构建版本是从 gitcode 克隆的，所以这两个变量都会被忽略。
 - **卡住的克隆会重试。** 从 gitcode 拉取时如果卡住（一分钟内速度低于 1 KB/s），会被放弃并重试，最多三次；`GIT_HTTP_LOW_SPEED_LIMIT` / `GIT_HTTP_LOW_SPEED_TIME` 可以改这个阈值。
 - **gitcode.com 会对它的 API 限流。** 安装 OpenHarmony 构建版本时会等它，见上文。另见 [troubleshooting.md](troubleshooting.md#gitcodecom-被限流)。
-- **换行符。** 检出时会设置 `core.autocrlf=false`。未发布：0.2.4 用的是你自己的 git 配置，设成 `core.autocrlf=true` 时，Linux 上的检出里 `bin/internal/shared.sh` 是 CRLF 换行，`flutter` 会停在 `$'\r': command not found`，见 [arm64.md](arm64.md#限制)。
+- **换行符。** 检出时会设置 `core.autocrlf=false`，这样全局的 `core.autocrlf=true` 就不会让 Linux 上的检出带上 CRLF 换行，见 [arm64.md](arm64.md#限制)。
 
 ### 构建 OpenHarmony 应用
 

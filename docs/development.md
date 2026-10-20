@@ -38,7 +38,7 @@ vfox loads `metadata.lua`, calls a hook when a command needs it, and puts `PLUGI
 
 - `Available` returns one table per name with `version`, `url`, `sha256`, `key`, `note` and `addition`. `key` is the git commit of the release, which is how a channel finds its release: `current_release.stable` in the index is a commit, and `PreInstall` takes the entries whose `key` is that commit. `note` is the channel, shown in parentheses. `addition` is the Dart version, shown in brackets. `source = true` is the plugin's own mark for a `-arm64` source install.
 - `PreInstall` returns `version`, `url` and `sha256`. `version` becomes the name of the install. It is the name without the architecture suffix unless the request had one (`3.47.4` stays `3.47.4`, `3.47.4-x64` stays `3.47.4-x64`), and for a channel the release it stands for. A source install returns the path of a local directory as `url` and no checksum, and vfox moves the directory into place.
-- `PreInstall` calls `self:Available({ officialOnly = true })` and so does not use vfox's 12-hour cache of the list. Every install reads the index. `officialOnly` leaves out the OpenHarmony releases: an official install has no use for them, and gitcode.com rate-limits the API they come from. vfox calls `Available` with its own context (`vfox search`, and the `latest` of `vfox install`), and those lists have them. Unreleased: release 0.2.4 asks gitcode.com on every install.
+- `PreInstall` calls `self:Available({ officialOnly = true })` and so does not use vfox's 12-hour cache of the list. Every install reads the index. `officialOnly` leaves out the OpenHarmony releases: an official install has no use for them, and gitcode.com rate-limits the API they come from. vfox calls `Available` with its own context (`vfox search`, and the `latest` of `vfox install`), and those lists have them.
 - `PreInstall` returns `nil` for a name it cannot resolve, which vfox reports as `no installable runtime provided`. It raises an error for a failure: the message of `error()` shows up in the `plugin [PreInstall] method error:` line.
 - The index lists some releases more than once. `newestPublications` in `hooks/available.lua` keeps the newest entry (`release_date`) of each archive of a version, because a file that was uploaded again has the checksum of the newest entry only (see [troubleshooting.md](troubleshooting.md#checksum-error)). Different versions never merge, and a release in two channels has an archive in each and keeps both. `table.sort` is not stable, so the comparator has to tell any two entries apart, or equal entries come out in an order that depends on the whole input, and `PreInstall` takes the first match. It ends with the version and the channel for that.
 - `PostInstall` reads `ctx.sdkInfo[PLUGIN.name]`. It runs the manifest and the `pubspec.lock` fix under `pcall`, so a failure there never fails the install.
@@ -61,7 +61,7 @@ vfox loads `metadata.lua`, calls a hook when a command needs it, and puts `PLUGI
 
 1. OpenHarmony names after all others (`ohos.isOhosVersion`).
 2. The architecture of the machine, and names without a suffix, before the other architecture.
-3. Entries of the stable channel (`note == "stable"`) before the others, so that `@latest`, the first line, is the newest stable release and not a beta that has a higher number. Unreleased: release 0.2.4 has no such rule.
+3. Entries of the stable channel (`note == "stable"`) before the others, so that `@latest`, the first line, is the newest stable release and not a beta that has a higher number.
 4. `compare_versions`, newest first.
 5. The architecture of the machine before the other one, and then the plain string order.
 6. The channel (`beta` before `dev`), for the same name in two channels.
@@ -216,7 +216,7 @@ The Linux row of the table is where the script starts to ask (storage has the SD
 
 ## Releasing
 
-A maintainer runs **Actions → Plugin → Run workflow** on the default branch with the version, without `v`. The [README](../README.md#releasing-this-plugin) describes what the shared workflow does. Afterwards `plugins/flutter.json` in [vfox-plugins](https://github.com/version-fox/vfox-plugins) shows the version that `vfox add flutter` serves, and [changes.md](changes.md) should have an entry for it.
+A maintainer runs **Actions → Plugin → Run workflow** on the default branch with the version, without `v`. The [README](../README.md#releasing-this-plugin) describes what the shared workflow does. Afterwards `plugins/flutter.json` in [vfox-plugins](https://github.com/version-fox/vfox-plugins) shows the version that `vfox add flutter` serves. That lags the release by hours: 1 h 22 min for 0.2.2, 4 h for 0.2.3 and 2 h 28 min for 0.2.4. Then bring the docs up to date, in both languages: move the "Unreleased" entries of [changes.md](changes.md) under the new version, dated with the day of the release, name that version as the newest one in its first paragraph, put it in the `plugin_version` of the manifest in [flutter-upgrade.md](flutter-upgrade.md#how-the-check-works), and take the "Unreleased" marks out of the other pages, see [Writing the docs](#writing-the-docs).
 
 ## Writing the docs
 

@@ -2,17 +2,17 @@
 
 [中文](changes.md) | [English](../changes.md)
 
-每个版本改了什么，写成用户能感受到的样子。其余的细节见 GitHub 的发布页面和下面链接的 pull request。最新的发布版是 0.2.4，`main` 比它多出“未发布”下的所有内容。想现在就用上这些改动，见 [install-from-source.md](install-from-source.md)。
+每个版本改了什么，写成用户能感受到的样子。其余的细节见 GitHub 的发布页面和下面链接的 pull request。最新的发布版是 0.2.5。`main` 领先于它时，多出来的改动列在最前面的“未发布”下，想现在就用上它们，见 [install-from-source.md](install-from-source.md)。
 
-## 未发布
+## 0.2.5 (2026-10-21)
 
-- 安装官方版本不再访问 gitcode.com。0.2.4 每次安装都要问它，而 gitcode.com 对它的 API 限流（HTTP 429）时，一次安装或一次 `vfox search` 最多会等 6.5 分钟，什么也不打印：2026-10-21 测得 212 秒和 392 秒。`vfox search` 和 `vfox install` 的 `latest` 仍然会列出 OpenHarmony 的发布版本，但它们只尝试两次，遇到 HTTP 429 就放弃，拿不到列表时在 stderr 上打印一条警告。安装 OpenHarmony 构建版本还是和以前一样会等。见 [troubleshooting.md](troubleshooting.md#gitcodecom-被限流)。
-- `3.13.3`、`3.9.0-0.1.pre` 和 `3.17.0-0.0.pre` 可以安装了。Flutter 重新上传了它们的文件，却把旧的校验和留在索引里，挨着新的，0.2.4 可能取到旧的，以 `checksum error` 结束。现在列表会保留一个压缩包最新的条目，它才有文件的校验和。见 [troubleshooting.md](troubleshooting.md#checksum-error)。
-- 标签是 `+ohos-` 的 OpenHarmony 构建版本会被列出，也可以安装：`3.41.9+ohos-1.0.2`、`3.35.7+ohos-1.0.5`、`3.27.4+ohos-1.0.9` 和 `3.22.3+ohos-1.1.6`。见 [ohos.md](ohos.md#名称与发布版本)。
-- 源码安装的检出会设置 `core.autocrlf=false`。全局 `core.autocrlf=true` 时，0.2.4 在 Linux 上（Linux ARM64 和 OpenHarmony 构建版本）会让 Flutter 的 shell 脚本带上 CRLF 换行，`flutter` 就会停在 `bin/internal/shared.sh: line 5: $'\r': command not found`。见 [arm64.md](arm64.md#限制)。
-- Linux ARM64 和 Windows ARM64 只从第一个能用原生 Dart SDK 运行的版本起提供 `-arm64` 源码安装，分别是 Flutter 2.2.0 和 3.44.0-0.1.pre。0.2.4 也提供更老的版本，用的是 x64 的 Dart SDK：ARM64 的 Linux 机器运行不了它，Windows 靠模拟层运行它，名字却写着 arm64。这些版本的 `-x64` 压缩包仍然在列表里。见 [arm64.md](arm64.md#能原生运行的发布版本)。
-- `vfox search` 把稳定版列在预发布版本之前，所以 `vfox install flutter@latest` 装的是最新的稳定版（2026-10-21 是 `3.47.7-x64`），而不是最新的 beta（`3.50.0-0.1.pre-x64`）。见 [versions.md](versions.md#搜索)。
-- 遇到插件不支持的 CPU 时，提示有了空格：`flutter does not support the arm architecture`。
+- 安装官方版本不再访问 gitcode.com（[#50](https://github.com/version-fox/vfox-flutter/pull/50)）。0.2.4 每次安装都要问它，而 gitcode.com 对它的 API 限流（HTTP 429）时，一次安装或一次 `vfox search` 最多会等 6.5 分钟，什么也不打印：2026-10-21 测得 212 秒和 392 秒。`vfox search` 和 `vfox install` 的 `latest` 仍然会列出 OpenHarmony 的发布版本，但它们只尝试两次，遇到 HTTP 429 就放弃，拿不到列表时在 stderr 上打印一条警告。安装 OpenHarmony 构建版本还是和以前一样会等。见 [troubleshooting.md](troubleshooting.md#gitcodecom-被限流)。
+- `3.13.3`、`3.9.0-0.1.pre` 和 `3.17.0-0.0.pre` 可以安装了（[#50](https://github.com/version-fox/vfox-flutter/pull/50)）。Flutter 重新上传了它们的文件，却把旧的校验和留在索引里，挨着新的，0.2.4 可能取到旧的，以 `checksum error` 结束。现在列表会保留一个压缩包最新的条目，它才有文件的校验和。见 [troubleshooting.md](troubleshooting.md#checksum-error)。
+- 标签是 `+ohos-` 的 OpenHarmony 构建版本会被列出，也可以安装（[#50](https://github.com/version-fox/vfox-flutter/pull/50)）：`3.41.9+ohos-1.0.2`、`3.35.7+ohos-1.0.5`、`3.27.4+ohos-1.0.9` 和 `3.22.3+ohos-1.1.6`。见 [ohos.md](ohos.md#名称与发布版本)。
+- 源码安装的检出会设置 `core.autocrlf=false`（[#50](https://github.com/version-fox/vfox-flutter/pull/50)）。全局 `core.autocrlf=true` 时，0.2.4 在 Linux 上（Linux ARM64 和 OpenHarmony 构建版本）会让 Flutter 的 shell 脚本带上 CRLF 换行，`flutter` 就会停在 `bin/internal/shared.sh: line 5: $'\r': command not found`。见 [arm64.md](arm64.md#限制)。
+- Linux ARM64 和 Windows ARM64 只从第一个能用原生 Dart SDK 运行的版本起提供 `-arm64` 源码安装，分别是 Flutter 2.2.0 和 3.44.0-0.1.pre（[#50](https://github.com/version-fox/vfox-flutter/pull/50)）。0.2.4 也提供更老的版本，用的是 x64 的 Dart SDK：ARM64 的 Linux 机器运行不了它，Windows 靠模拟层运行它，名字却写着 arm64。这些版本的 `-x64` 压缩包仍然在列表里。见 [arm64.md](arm64.md#能原生运行的发布版本)。
+- `vfox search` 把稳定版列在预发布版本之前（[#50](https://github.com/version-fox/vfox-flutter/pull/50)），所以 `vfox install flutter@latest` 装的是最新的稳定版（2026-10-21 是 `3.47.7-x64`），而不是最新的 beta（`3.50.0-0.1.pre-x64`）。见 [versions.md](versions.md#搜索)。
+- 遇到插件不支持的 CPU 时，提示有了空格：`flutter does not support the arm architecture`（[#50](https://github.com/version-fox/vfox-flutter/pull/50)）。
 
 ## 0.2.4 (2026-10-17)
 

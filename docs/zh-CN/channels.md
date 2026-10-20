@@ -51,7 +51,7 @@ vfox 只认已安装的名字。渠道在插件安装的过程中就换成了具
 
 ## `latest` 不是渠道
 
-`vfox install flutter@latest` 是 vfox 自己的简写，指的是 `vfox search flutter` 的第一行。那一行是最新的稳定版，带着架构后缀（2026-10-21 时是 `3.47.7-x64`），所以 `latest` 和 `stable` 装的是同一个 Flutter，只是名字不同（`3.47.7-x64` 和 `3.47.7`）。优先用 `stable`，见 [versions.md](versions.md#搜索)。未发布：0.2.4 按版本号里的数字把预发布版本和稳定版混在一起排，所以它的第一行是最新的 beta，它的 `latest` 装的是 `3.50.0-0.1.pre-x64`。
+`vfox install flutter@latest` 是 vfox 自己的简写，指的是 `vfox search flutter` 的第一行。那一行是最新的稳定版，带着架构后缀（2026-10-21 时是 `3.47.7-x64`），所以 `latest` 和 `stable` 装的是同一个 Flutter，只是名字不同（`3.47.7-x64` 和 `3.47.7`）。优先用 `stable`，见 [versions.md](versions.md#搜索)。
 
 ## `dev`
 

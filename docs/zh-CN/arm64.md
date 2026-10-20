@@ -92,8 +92,6 @@ Linux ARM64 和 Windows ARM64 会为“有 x64 构建、并且能用原生 Dart 
 
 插件从这个版本开始提供 `-arm64` 源码安装。Linux ARM64 上的 `vfox install flutter@1.20.0`，以及 Windows ARM64 上的 `vfox install flutter@3.43.0-0.3.pre`，都会以 `no installable runtime provided` 结束。更老版本的 x64 压缩包仍然在列表里：`vfox install flutter@3.43.0-0.3.pre-x64` 装的是其中一个，Windows ARM64 靠模拟运行它；Linux ARM64 上的 `flutter@1.20.0-x64` 适合能运行 x64 程序的环境。这张表是 `lib/source.lua` 里的数据，检查方法见 [development.md](development.md#刷新-dart-sdk-表)。
 
-未发布：0.2.4 为每个有 x64 构建的版本都提供 `-arm64` 源码安装，更老的那些拿到的是 x64 的 Dart SDK。在 Windows ARM64 上它靠模拟运行，名字却写着 arm64；在 Linux ARM64 上，ARM64 的机器运行不了它。
-
 ## 限制
 
 ### Linux ARM64 和 Windows ARM64
@@ -104,5 +102,5 @@ Linux ARM64 和 Windows ARM64 会为“有 x64 构建、并且能用原生 Dart 
 - **老版本没有 `-arm64` 变体。** 没有架构元数据的版本（比如 `1.22.6`，见上文）保持原有的、只有 x64 的行为。
 - **镜像对克隆不起作用。** `FLUTTER_STORAGE_BASE_URL`（见 [mirror.md](mirror.md)）只影响发布索引、x64 压缩包和 Flutter 工具自己的下载；源码安装从 GitHub 克隆。要给 GitHub 的源码安装用镜像，请设置 `VFOX_FLUTTER_GITHUB_MIRROR`（见 [mirror.md](mirror.md)）。
 - **老版本不提供。** 它们用不上原生的 Dart SDK，见[能原生运行的发布版本](#能原生运行的发布版本)。
-- **你的 git 配置同样生效。** 插件以你的身份运行 `git`，只有换行符例外：它会在检出里设置 `core.autocrlf=false`，这样全局的 `true`（Git for Windows 的安装程序默认建议这样设）就不会让 Flutter 的 shell 脚本带上 CRLF 换行。未发布：0.2.4 用的是你自己的设置。设成 `core.autocrlf=true` 时，Linux ARM64 的安装和 Linux 上的 OpenHarmony 构建版本，检出的 `bin/internal/shared.sh` 和 Flutter 其他 `.sh` 文件里都是 CRLF，因为 Flutter 的 `.gitattributes` 只对 `bin/flutter`、`bin/flutter-dev` 和 `bin/dart` 强制使用 LF；第一次运行 `flutter` 就会停在 `bin/internal/shared.sh: line 5: $'\r': command not found`。请执行 `git config --global core.autocrlf input`（或 `false`），卸载这个版本再重新安装。
+- **你的 git 配置同样生效。** 插件以你的身份运行 `git`，只有换行符例外：它会在检出里设置 `core.autocrlf=false`，这样全局的 `true`（Git for Windows 的安装程序默认建议这样设）就不会让 Flutter 的 shell 脚本带上 CRLF 换行。Flutter 的 `.gitattributes` 只对 `bin/flutter`、`bin/flutter-dev` 和 `bin/dart` 强制使用 LF，所以设成 `true` 时，Linux ARM64 的安装和 Linux 上的 OpenHarmony 构建版本，检出的 `bin/internal/shared.sh` 和 Flutter 其他 `.sh` 文件里都会是 CRLF，第一次运行 `flutter` 就会停在 `bin/internal/shared.sh: line 5: $'\r': command not found`。0.2.5 之前的版本用的是你自己的设置，见 [troubleshooting.md](troubleshooting.md#bininternalsharedsh-line-5-r-command-not-found)。
 - **残留。** 安装失败会把 `.vfox/tmp/<名称>` 留下，见[源码安装如何进行](#源码安装如何进行)。

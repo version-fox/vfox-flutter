@@ -19,8 +19,8 @@ The plugin found nothing for the name you typed. The usual reasons:
 - The name is not a release. `flutter@3.47` and `flutter@3` are not completed to the newest 3.47.x or 3.x, and names are case sensitive (`flutter@Stable`). Look the name up in `vfox search flutter`, see [versions.md](versions.md).
 - `dev`: Flutter retired the channel, see [channels.md](channels.md#dev).
 - The architecture suffix does not exist for the machine: `-arm64` on Linux x64 and Windows x64, any suffix on a release without architecture metadata (`1.22.6-x64`), or no suffix for an old release on Apple silicon that only has an x64 build (`flutter@2.10.5` needs `flutter@2.10.5-x64`). See [arm64.md](arm64.md).
-- Unreleased: a release that is older than the first that runs with a native Dart SDK, on Linux ARM64 (`flutter@1.20.0`) or Windows ARM64 (`flutter@3.43.0-0.3.pre`). Release 0.2.4 installs them with the x64 Dart SDK, see [arm64.md](arm64.md#releases-that-run-natively). The `-x64` name installs the archive.
-- An OpenHarmony name with `+ohos-` (`3.41.9+ohos-1.0.2`) on release 0.2.4, which only knows `-ohos-` names. Unreleased: it knows both, see [ohos.md](ohos.md#names-and-releases).
+- A release that is older than the first that runs with a native Dart SDK, on Linux ARM64 (`flutter@1.20.0`) or Windows ARM64 (`flutter@3.43.0-0.3.pre`), see [arm64.md](arm64.md#releases-that-run-natively). The `-x64` name installs the archive.
+- An OpenHarmony name with `+ohos-` (`3.41.9+ohos-1.0.2`), when the plugin is older than 0.2.5 and does not know `+ohos-`. Update the plugin, see [ohos.md](ohos.md#names-and-releases).
 
 ### `flutter@stable is not installed`
 
@@ -57,7 +57,7 @@ failed to install flutter
 
 vfox downloaded the archive and its SHA-256 differs from the one in Flutter's release index. For a mirror, check that it serves the files of the index it serves. Without a mirror this was the data of the index itself: it lists `3.13.3`, `3.9.0-0.1.pre` and `3.17.0-0.0.pre` twice or three times for one file, with a different checksum for each entry. Flutter uploaded the file again and kept the old entries. The checksum of the newest entry is the right one (checked on Linux by downloading the three archives).
 
-The plugin lists only the newest entry of such a file, so these three install. Unreleased: release 0.2.4 lists every entry and installs the one that sorts first, which is arbitrary for entries that are equal, and which also depends on the rest of the list, such as how many OpenHarmony releases it holds. On 2026-10-21 it took an old entry for all three on Linux x64, and for some of them on macOS and Windows, and the install ended as above. Install a release next to it (`3.13.2` or `3.13.4` instead of `3.13.3`), or update the plugin. There is no switch to skip the check.
+The plugin lists only the newest entry of such a file, so these three install. Releases before 0.2.5 list every entry and install the one that sorts first. In release 0.2.4 that is arbitrary for entries that are equal, and it also depends on the rest of the list, such as how many OpenHarmony releases it holds. On 2026-10-21 it took an old entry for all three on Linux x64, and for some of them on macOS and Windows, and the install ended as above. Update the plugin, or install a release next to it (`3.13.2` or `3.13.4` instead of `3.13.3`). There is no switch to skip the check.
 
 ### `Warning: flutter SDK at ... has drifted from the version vfox installed.`
 
@@ -65,7 +65,7 @@ The plugin lists only the newest entry of such a file, so these three install. U
 
 ### `flutter does not support the 386 architecture`
 
-The plugin runs on x64 and ARM64 only. vfox tells it the CPU of its own binary (`386`, `arm`, `riscv64`, `loong64`, ...) and the message names it, as in `flutter does not support the arm architecture`. It stops `vfox search` and the install of an official release. See [platforms.md](platforms.md). Unreleased: release 0.2.4 prints the same without the spaces, `flutter does not support386architecture`.
+The plugin runs on x64 and ARM64 only. vfox tells it the CPU of its own binary (`386`, `arm`, `riscv64`, `loong64`, ...) and the message names it, as in `flutter does not support the arm architecture`. It stops `vfox search` and the install of an official release. See [platforms.md](platforms.md). Releases before 0.2.5 print it without the spaces: `flutter does not support386architecture`.
 
 ### Source installs: Linux ARM64 and Windows ARM64
 
@@ -89,7 +89,7 @@ A fetch that moves less than 1 KB/s for a minute is abandoned and counts as a fa
 | Message | Meaning |
 | --- | --- |
 | `OpenHarmony releases are unavailable from https://gitcode.com/api/v5/...: HTTP 429` | Installing an OpenHarmony build: five attempts to read the releases failed. The text after the colon is the last error, here gitcode.com's rate limit, see [below](#gitcodecom-is-rate-limited). Listing versions never prints this message, it prints the warning below and goes on without the OpenHarmony ones |
-| `Warning: the OpenHarmony releases could not be read from gitcode.com (<error>), so only the official releases are listed.` | Printed on stderr by `vfox search`, and by the `latest` of `vfox install`, when two attempts did not get the list. The official releases are listed as usual, and an OpenHarmony build still installs by its name. Unreleased: release 0.2.4 prints nothing, and waits up to 6.5 minutes first |
+| `Warning: the OpenHarmony releases could not be read from gitcode.com (<error>), so only the official releases are listed.` | Printed on stderr by `vfox search`, and by the `latest` of `vfox install`, when two attempts did not get the list. The official releases are listed as usual, and an OpenHarmony build still installs by its name. |
 | `flutter 3.47.7-ohos-1.0.0 is not an OpenHarmony release` | The name has `-ohos-` in it, and gitcode.com has no release by that name |
 | `flutter 3.41.10-ohos-1.0.0 has no architecture variants` | The name had `-x64` or `-arm64` after it |
 | `failed to fetch <commit> from https://gitcode.com/CPF-Flutter/flutter_flutter.git` | All three fetches failed |
@@ -98,7 +98,7 @@ See [ohos.md](ohos.md).
 
 ### `bin/internal/shared.sh: line 5: $'\r': command not found`
 
-A source install on Linux (Linux ARM64, or an OpenHarmony build) whose first `flutter` run fails like this was checked out with CRLF line endings, because of `core.autocrlf=true` in your git configuration. The plugin now sets `core.autocrlf=false` in the checkout. Unreleased: release 0.2.4 takes your setting, so run `git config --global core.autocrlf input`, uninstall the version and install it again, see [arm64.md](arm64.md#limits).
+A source install on Linux (Linux ARM64, or an OpenHarmony build) whose first `flutter` run fails like this was checked out with CRLF line endings, because of `core.autocrlf=true` in your git configuration. Since 0.2.5 the plugin sets `core.autocrlf=false` in the checkout, and older releases took your setting. Update the plugin or run `git config --global core.autocrlf input`, and uninstall the version and install it again: the install you have keeps its CRLF line endings. See [arm64.md](arm64.md#limits).
 
 ### `Building flutter tool...` and `It appears that the downloaded file is corrupt`
 
@@ -148,7 +148,7 @@ This is gitcode.com's limit for requests without a login, not a limit of yours: 
   An unreachable gitcode.com costs the same two attempts, so about 2 seconds with a connection that fails at once (measured through a proxy that refused it: 2.1 seconds). `vfox search flutter` is then cached without the OpenHarmony names for 12 hours, and `vfox config cache.availableHookDuration 0` turns the cache off.
 - Installing an OpenHarmony build makes up to five attempts and waits 30, 60, 120 and 180 seconds between them after a 429, so it can wait for 6.5 minutes and print nothing.
 
-Unreleased: release 0.2.4 waits like that for every command that lists versions, and for every install, official releases included. Measured on 2026-10-21, while gitcode.com was answering 429:
+Release 0.2.4 waits like that for every command that lists versions, and for every install, official releases included. Measured on 2026-10-21, while gitcode.com was answering 429:
 
 | Command | Took | Result |
 | --- | --- | --- |
@@ -159,9 +159,9 @@ Minutes later the same API answered in a second. Without a 429 a failing request
 
 ## Things that look wrong and are not
 
-- **`vfox install flutter@latest` installs `3.47.7-x64`, not `3.47.7`.** `latest` is the first line of `vfox search flutter`, the newest stable release, and it carries the architecture suffix, so the same Flutter installs twice if you also install `stable`, see [versions.md](versions.md#searching). Unreleased: release 0.2.4 installed the newest beta.
+- **`vfox install flutter@latest` installs `3.47.7-x64`, not `3.47.7`.** `latest` is the first line of `vfox search flutter`, the newest stable release, and it carries the architecture suffix, so the same Flutter installs twice if you also install `stable`, see [versions.md](versions.md#searching). Release 0.2.4 installed the newest beta.
 - **A version appears more than once in `vfox search flutter`.** Flutter's index lists it in more than one channel, see [versions.md](versions.md#searching).
-- **Unreleased: `vfox search flutter` or `vfox install` waits for minutes and prints nothing.** Release 0.2.4 waits for gitcode.com when it limits its API, see [gitcode.com is rate-limited](#gitcodecom-is-rate-limited). The command finishes by itself.
+- **Installing an OpenHarmony build waits for minutes and prints nothing.** The plugin waits for gitcode.com when it limits its API, see [gitcode.com is rate-limited](#gitcodecom-is-rate-limited). The command finishes by itself. Release 0.2.4 does the same for `vfox search flutter` and for every install.
 - **`(installed)` is missing for a version you installed.** The mark follows listed names, such as `3.47.4-x64`, and not the bare name you installed. `vfox list flutter` is the truth.
 - **A release you expect is missing from `vfox search`.** vfox keeps the result for 12 hours. `vfox config cache.availableHookDuration 0` turns the cache off. Flutter's index may not have it yet either, or your mirror's copy may not.
 - **`3.47.4` and `3.47.4-x64` are two installs.** On an x64 machine they are the same Flutter, see [versions.md](versions.md#installed-names).
