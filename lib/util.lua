@@ -45,7 +45,7 @@ function getOsTypeAndArch()
     elseif archType == "arm64" then
         archType = "arm64"
     else
-        error("flutter does not support" .. archType .. "architecture")
+        error("flutter does not support the " .. archType .. " architecture")
     end
     return {
         osType = osType,
