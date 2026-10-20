@@ -1,5 +1,7 @@
 # E2E
 
+[中文](zh-CN/e2e.md) | [English](e2e.md)
+
 The offline Lua hook tests (`tests/hooks_test.lua`) run in the **Test Plugin** workflow.
 The end-to-end suite runs in containers against real vfox on Linux and Windows;
 each `vfox` x `flavor` x `mirror` combination gets its own throwaway
@@ -7,6 +9,9 @@ container. CI runs both suites natively on the stock runners (Docker plus Go
 from `actions/setup-go`). Locally, the repository dev container reproduces the
 Linux run; Windows hosts use a Docker Compose runner image instead, since dev
 containers cannot host Windows container images (see below).
+
+[platforms.md](platforms.md#what-the-tests-cover) summarizes what the suites cover,
+and [development.md](development.md) explains how the plugin works.
 
 ## Dev container
 
