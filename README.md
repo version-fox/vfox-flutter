@@ -56,6 +56,15 @@ Behavior that only exists on `main` and not in the latest release is marked "Unr
 pages below. [docs/changes.md](docs/changes.md) lists it, and
 [docs/install-from-source.md](docs/install-from-source.md) gets you `main`.
 
+## Use cases
+
+By hand, Flutter is a download, an unpack and an edit of `~/.bashrc`, again for every machine and
+every version. With the plugin it is `vfox install` and `vfox use`, and `~/.bashrc` has the one
+line that hooks vfox into your shell and nothing about Flutter. [docs/use-cases.md](docs/use-cases.md)
+sets the two side by side and goes through the situations the plugin is for: a new machine, or one
+that has a hand-made install; projects and teams that each use their own Flutter version; upgrading
+and going back; trying a beta; a mirror in China; scripts and IDEs; and ARM64 machines.
+
 ## Versions and names
 
 A version is a release as `vfox search flutter` prints it: `3.47.4`, or a beta such as

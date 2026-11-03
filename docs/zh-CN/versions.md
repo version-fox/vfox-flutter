@@ -96,7 +96,7 @@ vfox uninstall flutter@3.47.4-x64
 | `--project` | 当前目录里的 `.vfox.toml` | 那个目录里的 `.vfox/sdks/flutter/bin` |
 | `--session` | 只在当前 Shell 里 | `~/.vfox/tmp` 下的某个目录 |
 
-`.vfox.toml` 里写的是已安装的名字（`flutter = "3.47.4"`）。把它提交进仓库，大家构建项目时用的就是同一个 Flutter；`.vfox/` 则不要提交：vfox 不会替你把它加进 `.gitignore`。vfox 在 `legacyVersionFile.enable` 打开时还会读取 asdf 的 `.tool-versions`（`flutter 3.47.4`），vfox 1.0.13 默认是打开的。插件自己没有旧版本文件的支持，所以不会读取 `.fvmrc` 和 FVM 的 `.fvm` 目录。
+`.vfox.toml` 里写的是已安装的名字（`flutter = "3.47.4"`）。把它提交进仓库，大家构建项目时用的就是同一个 Flutter；`.vfox/` 则不要提交：项目里已有 `.gitignore` 时，vfox 1.0.13 会替你把它加进去（打印 `Added '.vfox/' to .gitignore`），没有 `.gitignore` 时它不会替你新建。这个选择只在 `.vfox.toml` 所在的目录里生效，子目录里不生效，那里的 `flutter` 来自会话或全局的选择，见 [use-cases.md](use-cases.md#项目用不同的-flutter-版本)。vfox 在 `legacyVersionFile.enable` 打开时还会读取 asdf 的 `.tool-versions`（`flutter 3.47.4`），vfox 1.0.13 默认是打开的。插件自己没有旧版本文件的支持，所以不会读取 `.fvmrc` 和 FVM 的 `.fvm` 目录。
 
 插件会把 `<sdk>/bin` 加进 `PATH`，`flutter` 和 `dart` 就都在里面了。它不会设置 `FLUTTER_ROOT`，也不会把 `dart pub global activate` 放可执行文件的 `~/.pub-cache/bin` 加进去，这个要你自己加。
 
