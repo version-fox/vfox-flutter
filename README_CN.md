@@ -38,6 +38,10 @@ dart --version
 
 只存在于 `main`、还没进入最新发布版的行为，在下面各页里标有“未发布”。完整列表见 [docs/zh-CN/changes.md](docs/zh-CN/changes.md)，想直接用上 `main`，见 [docs/zh-CN/install-from-source.md](docs/zh-CN/install-from-source.md)。
 
+## 使用场景
+
+手动安装 Flutter，就是下载、解压，再改一次 `~/.bashrc`，每台机器、每个版本都要重来一遍。用这个插件只需要 `vfox install` 和 `vfox use`，`~/.bashrc` 里只有把 vfox 挂到 Shell 上的那一行，没有任何和 Flutter 有关的内容。[docs/zh-CN/use-cases.md](docs/zh-CN/use-cases.md) 把两种做法并排放在一起，并逐个讲了插件适用的场景：新机器，或者已经手动装过 Flutter 的机器；各个项目、整个团队各用各的 Flutter 版本；升级与回退；试用 beta；中国的镜像；脚本与 IDE；以及 ARM64 机器。
+
 ## 版本与命名
 
 版本就是 `vfox search flutter` 打印出的发布版本：`3.47.4`，或者 `3.50.0-0.1.pre` 这样的 beta。后面加 `-x64` 或 `-arm64`，表示要这个架构而不是本机架构；`stable` 和 `beta` 代表该渠道当前指向的版本。版本必须整串匹配，所以 `flutter@3.47` 不会选中最新的 3.47.x。`vfox use`、`vfox uninstall` 和 `vfox exec` 要写已安装的名字，也就是 `vfox list flutter` 里显示的那个。`flutter@latest` 是列表的第一行，即最新的稳定版。名字、安装后的命名和列表的顺序见 [docs/zh-CN/versions.md](docs/zh-CN/versions.md)。
