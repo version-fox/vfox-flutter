@@ -21,7 +21,20 @@ vfox use --global flutter@3.47.4
 vfox install --reinstall flutter@3.47.0
 ```
 
-`vfox doctor` 会报告同一个问题（`sdk.drift`）。通过 `vfox link` 登记的 SDK 变了，只会作为提示出现：vfox 并不拥有那个 SDK。
+`vfox doctor` 会报告同一个问题（`sdk.drift`）。
+
+## 用其他包管理器装的 SDK
+
+机器上已有的 Flutter，不管是 Homebrew、mise、asdf、winget 装的，还是手动装的，都可以登记给 vfox 用，不用重新下载。登记持有 `bin` 的那个目录（不是的会被拒绝，并说明原因）：
+
+```bash
+vfox link flutter@brew-3.47.4 <flutter-sdk-所在的目录>
+vfox use --global flutter@brew-3.47.4
+```
+
+不管是谁下载的，Google 每个发布压缩包里都带有完整的 `.git` 检出，所以 Fingerprint 事实还是同一个 `head`，就地改动（比如 `brew upgrade`）也会同样报出来，有两点不同：vfox 并不拥有那个 SDK，所以这条问题只是 `vfox doctor` 里 info 级别的提示（`Found 0 errors, 0 warnings and 1 notice`），也没有 `Fix:` 那一行。`vfox install --reinstall` 会拒绝登记来的版本；要用它自己的管理器去升级或删除那个 SDK，或者执行 `vfox uninstall flutter@<名字>` 只删掉登记（SDK 本身原样保留）。没有 `.git` 的登记目录记不下事实，和没有 `.git` 的安装一样，永远安静。
+
+如果另一个管理器的 `flutter` 一直在运行，选中的 `vfox use` 版本始终轮不到它，说明它的目录在 `PATH` 里更靠前：`command -v flutter` 能看到实际赢的是哪一个，`vfox doctor` 会点出挡在前面的目录（`path.shadowed`）。哪些目录留在前面，由 vfox 的 [`path.mode`](https://vfox.dev/zh-hans/guides/configuration.html#path-order-settings) 决定。
 
 ## 警告内容
 

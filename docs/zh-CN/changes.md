@@ -6,7 +6,7 @@
 
 ## 未发布
 
-- 漂移检查走 vfox 的 `Fingerprint` 钩子（需要 vfox 1.1.0 或更新的版本）：插件只从文件读取 SDK 检出的 git HEAD 并报告，vfox 把它记在版本的收据里，`vfox use` 之后和 `vfox doctor` 里报告 `sdk.drift`，用 `vfox install --reinstall` 恢复。新版 vfox 上插件不再写 `.vfox-manifest`，也不再打印自己的警告，以免同一处漂移报两次；老于 1.1.0 的 vfox 保留旧的警告。见 [flutter-upgrade.md](flutter-upgrade.md)。
+- 漂移检查走 vfox 的 `Fingerprint` 钩子（需要 vfox 1.1.0 或更新的版本）：插件只从文件读取 SDK 检出的 git HEAD 并报告，vfox 把它记在版本的收据里，`vfox use` 之后和 `vfox doctor` 里报告 `sdk.drift`，用 `vfox install --reinstall` 恢复。其他管理器（Homebrew、mise、asdf、winget、手动安装）装出来、登记给 vfox 的 SDK，只要还带着 `.git`，同样按 info 级别的提示覆盖（vfox 不拥有它）。新版 vfox 上插件不再写 `.vfox-manifest`，也不再打印自己的警告，以免同一处漂移报两次；老于 1.1.0 的 vfox 保留旧的警告。见 [flutter-upgrade.md](flutter-upgrade.md)。
 
 ## 0.2.5 (2026-10-21)
 

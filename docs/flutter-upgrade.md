@@ -29,8 +29,36 @@ If you already upgraded in place, restore the version with:
 vfox install --reinstall flutter@3.47.0
 ```
 
-`vfox doctor` reports the same finding (`sdk.drift`), and a linked SDK that
-changed reports it as a notice only: vfox does not own that SDK.
+`vfox doctor` reports the same finding (`sdk.drift`).
+
+## An SDK installed by another manager
+
+A Flutter that is already on the machine, from Homebrew, mise, asdf, winget
+or a manual install, can be used through vfox without downloading it again.
+Register the directory that holds `bin` (anything else is refused, with the
+reason):
+
+```bash
+vfox link flutter@brew-3.47.4 <path-to-the-flutter-sdk>
+vfox use --global flutter@brew-3.47.4
+```
+
+Google ships a full `.git` checkout in every release archive no matter who
+downloads it, so the Fingerprint fact is the same `head`, and an in-place
+change (for example `brew upgrade`) shows up the same way, with two
+differences: vfox does not own that SDK, so the finding is an info-level
+notice in `vfox doctor` only (`Found 0 errors, 0 warnings and 1 notice`),
+and there is no `Fix:` line. `vfox install --reinstall` refuses a linked
+version; upgrade or remove that SDK with its own manager, or run
+`vfox uninstall flutter@<name>` to remove just the link (the SDK itself is
+left untouched). A linked directory without a `.git` records no fact and
+stays silent, like an install without one.
+
+If the other manager's `flutter` keeps running instead of the one `vfox use`
+selected, its directory sits earlier in `PATH`: `command -v flutter` shows
+which one wins, and `vfox doctor` names the shadowing directory
+(`path.shadowed`). What stays in front is decided by vfox's
+[`path.mode`](https://vfox.dev/guides/configuration.html#path-order-settings).
 
 ## The warning
 
