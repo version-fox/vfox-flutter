@@ -221,7 +221,7 @@ done
 
 ## 发布
 
-维护者在默认分支上执行 **Actions → Plugin → Run workflow**，填入不带 `v` 的版本号。共享工作流做了什么，见 [README](../../README_CN.md#发布这个插件)。之后 [vfox-plugins](https://github.com/version-fox/vfox-plugins) 里的 `plugins/flutter.json` 会显示 `vfox add flutter` 提供的版本。这比发布晚几个小时：0.2.2 晚了 1 小时 22 分钟，0.2.3 晚了 4 小时，0.2.4 晚了 2 小时 28 分钟。然后把文档更新到位，两种语言都要：把 [changes.md](changes.md) 里“未发布”下的条目挪到新版本下面，标上发布当天的日期，在它的第一段里把新版本写成最新的发布版，并去掉其他页面里的“未发布”标记，见[编写文档](#编写文档)。
+维护者在默认分支上执行 **Actions → Plugin → Run workflow**，填入不带 `v` 的版本号。共享工作流做了什么，见 [README](../../README_CN.md#发布这个插件)。之后 [vfox-plugins](https://github.com/version-fox/vfox-plugins) 里的 `plugins/flutter.json` 会显示 `vfox add flutter` 提供的版本。这比发布晚几个小时：0.2.3 晚了 4 小时，0.2.4 晚了 2 小时 28 分钟，0.2.5 晚了 2 小时 20 分钟。然后把文档更新到位，两种语言都要：把 [changes.md](changes.md) 里“未发布”下的条目挪到新版本下面，标上发布当天的日期，在它的第一段里把新版本写成最新的发布版，并去掉其他页面里的“未发布”标记，见[编写文档](#编写文档)。
 
 ## 编写文档
 

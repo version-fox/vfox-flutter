@@ -2,12 +2,12 @@
 
 [中文](zh-CN/changes.md) | [English](changes.md)
 
-What changed in each release, as a user notices it. GitHub's release pages and the pull requests linked below have the rest. The newest release is 0.2.5. When `main` is ahead of it, the changes it has are listed first, under "Unreleased", and [install-from-source.md](install-from-source.md) gets you those now.
+What changed in each release, as a user notices it. GitHub's release pages and the pull requests linked below have the rest. The newest release is 0.2.6. When `main` is ahead of it, the changes it has are listed first, under "Unreleased", and [install-from-source.md](install-from-source.md) gets you those now.
 
-## Unreleased
+## 0.2.6 (2026-11-10)
 
-- Drift detection goes through vfox's `Fingerprint` hook (needs vfox 1.1.0 or later): the plugin reports the SDK checkout's git HEAD from files only, vfox records it in the version's receipt and reports `sdk.drift` after `vfox use` and in `vfox doctor`, fixed with `vfox install --reinstall`. Linked copies from other managers (Homebrew, mise, asdf, FVM, manual installs) are covered the same way when they still carry their `.git`, as an info-level notice that vfox does not own. The plugin no longer writes `.vfox-manifest` on new vfox and no longer prints its own warning there, so the same drift is not reported twice; vfox older than 1.1.0 keeps the old warning. See [flutter-upgrade.md](flutter-upgrade.md).
-- `vfox link --detect flutter` finds the Flutter SDKs that are already on the machine, from Homebrew, mise, asdf, FVM and manual installs in their usual places, and links what it finds (needs vfox 1.1.0 or later). Anything elsewhere is for `vfox link flutter@<name> <path>`.
+- Drift detection goes through vfox's `Fingerprint` hook ([#55](https://github.com/version-fox/vfox-flutter/pull/55)) (needs vfox 1.1.0 or later): the plugin reports the SDK checkout's git HEAD from files only, vfox records it in the version's receipt and reports `sdk.drift` after `vfox use` and in `vfox doctor`, fixed with `vfox install --reinstall`. Linked copies from other managers (Homebrew, mise, asdf, FVM, manual installs) are covered the same way when they still carry their `.git`, as an info-level notice that vfox does not own. The plugin no longer writes `.vfox-manifest` on new vfox and no longer prints its own warning there, so the same drift is not reported twice; vfox older than 1.1.0 keeps the old warning. See [flutter-upgrade.md](flutter-upgrade.md).
+- `vfox link --detect flutter` finds the Flutter SDKs that are already on the machine, from Homebrew, mise, asdf, FVM and manual installs in their usual places, and links what it finds ([#55](https://github.com/version-fox/vfox-flutter/pull/55)) (needs vfox 1.1.0 or later). Anything elsewhere is for `vfox link flutter@<name> <path>`.
 
 ## 0.2.5 (2026-10-21)
 
