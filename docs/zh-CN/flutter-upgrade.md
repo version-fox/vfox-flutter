@@ -25,7 +25,14 @@ vfox install --reinstall flutter@3.47.0
 
 ## 用其他包管理器装的 SDK
 
-机器上已有的 Flutter，不管是 Homebrew、mise、asdf、winget 装的，还是手动装的，都可以登记给 vfox 用，不用重新下载。登记持有 `bin` 的那个目录（不是的会被拒绝，并说明原因）：
+机器上已有的 Flutter，不管是 Homebrew、mise、asdf、FVM 装的，还是手动装的，都可以登记给 vfox 用，不用重新下载。先让 vfox 自己找：
+
+```bash
+vfox link --detect flutter
+vfox use --global flutter@3.47.4
+```
+
+`--detect` 会看那些惯常的位置（Homebrew 的 Caskroom、mise 和 asdf 的安装目录、FVM 的 versions、几个手动安装的常用目录），找到就登记。已经装过或登记过的会跳过，并说明原因。不在这些地方的，用手动的形式，登记持有 `bin` 的那个目录：
 
 ```bash
 vfox link flutter@brew-3.47.4 <flutter-sdk-所在的目录>

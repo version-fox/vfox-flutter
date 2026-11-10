@@ -33,10 +33,20 @@ vfox install --reinstall flutter@3.47.0
 
 ## An SDK installed by another manager
 
-A Flutter that is already on the machine, from Homebrew, mise, asdf, winget
-or a manual install, can be used through vfox without downloading it again.
-Register the directory that holds `bin` (anything else is refused, with the
-reason):
+A Flutter that is already on this machine, from Homebrew, mise, asdf, FVM or
+a manual install, can be used through vfox without downloading it again.
+Let vfox find it:
+
+```bash
+vfox link --detect flutter
+vfox use --global flutter@3.47.4
+```
+
+`--detect` looks in the usual places (Homebrew's Caskroom, the install
+directories of mise and asdf, FVM's versions, a few manual-install locations)
+and links what it finds. What is already installed or linked is skipped,
+with the reason. Anything elsewhere is for the manual form, with the
+directory that holds `bin`:
 
 ```bash
 vfox link flutter@brew-3.47.4 <path-to-the-flutter-sdk>

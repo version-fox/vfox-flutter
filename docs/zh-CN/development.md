@@ -10,12 +10,14 @@ hooks/available.lua       vfox search：所有名字的列表
 hooks/pre_install.lua     vfox install：把名字解析成一个包；还有 PostInstall
 hooks/pre_use.lua         vfox use：vfox 老于 1.1.0 时的漂移检查
 hooks/fingerprint.lua     vfox 1.1.0 及更新的版本上，`vfox use` / `doctor` 用的 git HEAD 事实
+hooks/detect.lua          vfox 1.1.0 及更新的版本上，`vfox link --detect` 找机器上已有的 SDK
 hooks/env_keys.lua        PATH
 lib/util.lua              镜像、平台、版本名及其顺序，还有 vfox 版本的判断
 lib/git.lua               git 命令、GitHub 镜像、工作目录
 lib/source.lua            Linux ARM64 和 Windows ARM64 的源码安装
 lib/ohos.lua              OpenHarmony 发布版本和检出
 lib/manifest.lua          Fingerprint 的 HEAD 读取、旧的 `.vfox-manifest`，以及 pubspec.lock 的修正
+lib/detect_sdk.lua        给 Detect 用的知名安装位置和 SDK 判定
 tests/hooks_test.lua      离线的 hook 测试
 tests/e2e/                容器测试，见 e2e.md
 Injection.lua             vfox 注入内容的类型提示，从不加载
@@ -43,10 +45,11 @@ vfox 加载 `metadata.lua`，在命令需要时调用 hook，并把 `PLUGIN` 和
 - `PreInstall` 对解析不了的名字返回 `nil`，vfox 会把它报告成 `no installable runtime provided`。失败时它会抛出错误：`error()` 的内容会出现在 `plugin [PreInstall] method error:` 那一行里。
 - 索引里有些版本不止列了一次。`hooks/available.lua` 里的 `newestPublications` 对一个版本的每个压缩包只保留最新（`release_date`）的那条，因为重新上传过的文件，只有最新那条的校验和才是对的（见 [troubleshooting.md](troubleshooting.md#checksum-error)）。不同的版本绝不会合并，在两个渠道里的版本各有一个压缩包，两条都保留。`table.sort` 不是稳定排序，所以比较函数必须能区分任意两个条目，否则相等的条目出来的顺序取决于整个输入，而 `PreInstall` 取第一个匹配的。为此比较函数最后还比较版本和渠道。
 - `PostInstall` 读取 `ctx.sdkInfo[PLUGIN.name]`。`pubspec.lock` 的修正放在 `pcall` 里，所以那里的失败永远不会让安装失败。旧的 `.vfox-manifest` 只在运行的 vfox 老于 1.1.0 时才写（`lib/util.lua` 里的 `supportsFingerprint`）：新版 vfox 把 `Fingerprint` 事实记在版本的收据里。
-- `Fingerprint` 把 SDK 检出所在的提交作为 `facts.head` 报告，只从文件读 `.git/HEAD`（以及它指向的 ref 或 `packed-refs`）：不跑进程，不访问网络，远快于 hook 要求的 50 毫秒。没有可检查的东西（没有 `.git`）时返回 nil，vfox 就保持安静。压缩包安装、源码安装和 OpenHarmony 构建版本都会报告，还带着 `.git` 的登记副本（Homebrew、mise、asdf、winget、手动安装）也一样。`PreUse` 在 vfox 1.1.0 及更新的版本上跳过自己的漂移检查（`supportsFingerprint(ctx.runtimeVersion)`），以免同一处漂移报两次；更老的 vfox 保留插件自己的 `.vfox-manifest` 警告。
+- `Fingerprint` 把 SDK 检出所在的提交作为 `facts.head` 报告，只从文件读 `.git/HEAD`（以及它指向的 ref 或 `packed-refs`）：不跑进程，不访问网络，远快于 hook 要求的 50 毫秒。没有可检查的东西（没有 `.git`）时返回 nil，vfox 就保持安静。压缩包安装、源码安装和 OpenHarmony 构建版本都会报告，还带着 `.git` 的登记副本（Homebrew、mise、asdf、FVM、手动安装）也一样。`PreUse` 在 vfox 1.1.0 及更新的版本上跳过自己的漂移检查（`supportsFingerprint(ctx.runtimeVersion)`），以免同一处漂移报两次；更老的 vfox 保留插件自己的 `.vfox-manifest` 警告。
+- `Detect` 给 `vfox link --detect` 扫描那些人都知道的安装位置：macOS 上 Homebrew 的 Caskroom、mise（`$MISE_DATA_DIR`，否则 `~/.local/share/mise`）和 asdf（`$ASDF_DATA_DIR`，否则 `~/.asdf`）的安装目录、FVM 的 versions，以及几个手动安装的目录（Windows 上还有 `C:\src\flutter`）。`bin` 里有 `flutter`（或 `flutter.bat`）、根目录 `version` 文件写着 vfox 能拿来登记的名字，才算一个 SDK，备注里写它是在哪里找到的。`lib` 里的模块不能和 hook 同名：vfox 先搜 `hooks/` 再搜 `lib/`，所以 `require("detect")` 会载入 `hooks/detect.lua` 自己，造成循环，这就是模块放在 `lib/detect_sdk.lua` 的原因。
 - vfox 用 Go 的 `archive/tar` 解压 `.tar.xz`，它给文件打上的是解压时的时间，而不是压缩包里存的时间。官方的 `tar -xf` 流程会保留那些时间，于是 `packages/flutter_tools/pubspec.lock` 比 `pubspec.yaml` 新。vfox 安装之后，两者共用解压的时间，谁最后写入谁就显得更新，所以 `bin/internal/shared.sh` 可能发现 `pubspec.yaml` 比 `pubspec.lock` 新，在第一次运行时重新构建工具（`Building flutter tool...`）。`manifest.touchPubspecLock` 在所有平台上重写 `pubspec.lock`，把顺序恢复过来（[#37](https://github.com/version-fox/vfox-flutter/issues/37)）。源码安装按设计就要在第一次运行时构建工具。
 - Windows 上的命令行，在 vfox 1.0.13 及更新的版本里原样交给 `cmd.exe`（[vfox#712](https://github.com/version-fox/vfox/pull/712)），更老的版本会再加一层引号。`lib/git.lua` 和 `lib/manifest.lua` 里的 `quote` 只给含有空白字符的路径加双引号，其他路径保持原样，这样带空格的路径在 1.0.13 上可用，不带空格的路径在更老的版本上也依然可用。
-- `os.execute` 报告成功的方式，视所用的 Lua 而定，可能是 `0`，也可能是 `true`，`lib/git.lua` 里的 `exec` 两者都接受。插件在 `Fingerprint` 之外读取 `git` 的输出靠的是 `io.popen`（旧的漂移检查、源码安装的 `git` 命令）；没有输出或失败的命令读出来是 `nil`，所以 `lib/manifest.lua` 里缺少 `git` 时不会有任何察觉。`Fingerprint` 本身从不用 `io.popen` 或 `os.execute`。
+- `os.execute` 报告成功的方式，视所用的 Lua 而定，可能是 `0`，也可能是 `true`，`lib/git.lua` 里的 `exec` 两者都接受。插件在 `Fingerprint` 之外读取 `git` 的输出靠的是 `io.popen`（旧的漂移检查、源码安装的 `git` 命令），`Detect` 列安装目录也靠它；没有输出或失败的命令读出来是 `nil`，所以 `lib/manifest.lua` 里缺少 `git` 时不会有任何察觉。`Fingerprint` 本身从不用 `io.popen` 或 `os.execute`。
 - `lib/git.lua` 的工作目录依次取自 `VFOX_HOME`、`HOME`、`USERPROFILE`，再加上 `.vfox/tmp/<名称>`。设置了 `VFOX_HOME` 时就是 `$VFOX_HOME/.vfox/tmp/<名称>`，比 vfox 主目录低一层 `.vfox`。安装失败时这个目录不会被删除。
 - `git` 用的是你的配置，只有 `git.init` 写进检出里的两项设置例外：`core.longpaths=true`，以及 `core.autocrlf=false`，因为全局的 `true` 会让 Flutter 的 shell 脚本带上 CRLF（见 [arm64.md](arm64.md#限制)）。在 Windows 上 `false` 写出的 CRLF 文件和 `true` 一样，因为那里的 `core.eol` 是 native。这是 git 本身的工作方式，我们在 Linux 上用 `core.eol=crlf` 和 Flutter 的 `.gitattributes`（第一条是 `* text=auto`）检查过：两种设置写出的文件同样是 CRLF，`bin/flutter` 则保持 LF。Windows ARM64 的容器测试装的就是这样的检出。拉取时会加上 `http.lowSpeedLimit=1000` 和 `http.lowSpeedTime=60`，`GIT_HTTP_LOW_SPEED_LIMIT` 和 `GIT_HTTP_LOW_SPEED_TIME` 可以覆盖它们。
 - `lib/ohos.lua` 等 gitcode.com 有两种方式。安装构建版本需要发布版本列表，所以尝试五次：间隔 10 秒，遇到 HTTP 429 之后是 30、60、120 和 180 秒。列出它们只是给 `vfox search` 帮个忙，所以 `ohos.list()` 只尝试两次，间隔 2 秒，遇到 HTTP 429 就停，并返回 `nil` 和原因。然后 `Available` 往 stderr 写一行警告，再列出官方版本。
@@ -108,7 +111,7 @@ go run github.com/yuin/gopher-lua/cmd/glua@v1.1.1 tests/hooks_test.lua
 - 检出不会采用你 git 配置里的 `core.autocrlf`（这一项运行真正的 `git`，没有它就跳过）；
 - 不支持的 CPU 会在提示里点出名字。
 
-`Fingerprint` 的文件读取和 `PreUse` 的版本判断不在这个文件里，源码安装和 OpenHarmony 构建版本也只测到它们的 `git` 命令为止。这些由容器测试覆盖，见 [e2e.md](e2e.md)。lint、许可证头和容器测试见 [e2e.md](e2e.md#本地检查)。
+`Fingerprint` 的文件读取和 `PreUse` 的版本判断不在这个文件里，`Detect` 在（管理器布局、版本文件命名，以及 Windows 的目录列出）。源码安装和 OpenHarmony 构建版本也只测到它们的 `git` 命令为止。这些由容器测试覆盖，见 [e2e.md](e2e.md)。lint、许可证头和容器测试见 [e2e.md](e2e.md#本地检查)。
 
 要单独调用一个 hook，vfox 1.0.13 及更新的版本有 `vfox plugin run`。它不会注册插件，`--os` 和 `--arch` 可以替另一个平台作答：
 
