@@ -27,9 +27,10 @@ import (
 	"github.com/version-fox/vfox-flutter/tests/e2e/common"
 )
 
-// NOTE: the drift-warning strings asserted here are part of the plugin's
-// user-facing contract (see hooks/ lib/). If the Lua side rewords them,
-// update this file and tests/e2e/linux/verify.go together.
+// NOTE: the drift strings asserted here are the core's user-facing contract
+// for `sdk.drift` (see `vfox doctor`), fed by the plugin's Fingerprint hook.
+// If vfox rewords them, update this file and tests/e2e/linux/verify.go
+// together.
 
 // winDir is filepath.Dir for container paths, which always use backslashes
 // even when the test binary itself runs on a non-Windows host.
@@ -70,31 +71,45 @@ func verifySdkLayout(ctx context.Context, t *testing.T, ctr tc.Container, box sl
 	t.Log("PASS the OpenHarmony SDK is a git checkout with its engine pins tracked")
 }
 
-// manifestAnchor reads .vfox-manifest and returns its expected_head.
-func manifestAnchor(ctx context.Context, t *testing.T, ctr tc.Container, box slotBox, sdk string) string {
+// receiptAnchor reads the version's receipt (`.vfox-receipt.json`, written
+// from the Fingerprint hook) and returns its head fact. sdk is the global
+// link; the receipt lives in the version directory, the parent of the real
+// SDK directory, so resolve the link target first.
+func receiptAnchor(ctx context.Context, t *testing.T, ctr tc.Container, box slotBox, sdk string) string {
 	t.Helper()
+	target := strings.TrimSpace(execOK(ctx, t, ctr,
+		"(Get-Item "+pwshQuote(sdk)+").Target", box.vars...))
+	versionDir := winDir(target)
 	raw := execOK(ctx, t, ctr,
-		"Get-Content -Raw "+pwshQuote(sdk+`\.vfox-manifest`), box.vars...)
-	var m common.Manifest
-	if err := json.Unmarshal([]byte(raw), &m); err != nil {
-		t.Fatalf("the .vfox-manifest is not valid JSON: %v\n--- actual ---\n%s", err, raw)
+		"Get-Content -Raw "+pwshQuote(versionDir+`\.vfox-receipt.json`), box.vars...)
+	var r common.Receipt
+	if err := json.Unmarshal([]byte(raw), &r); err != nil {
+		t.Fatalf("the .vfox-receipt.json is not valid JSON: %v\n--- actual ---\n%s", err, raw)
 	}
-	require.NotEmpty(t, m.ExpectedHead, "the .vfox-manifest has no expected_head")
-	return m.ExpectedHead
+	require.NotEmpty(t, r.Facts["head"], "the receipt has no head fact")
+	return r.Facts["head"]
 }
 
-// verifyManifestDrift anchors the installed HEAD via .vfox-manifest, proves
-// `vfox use` reports drift exactly when the SDK moves (simulated
+// shortHead shortens a commit the way vfox does in the drift message.
+func shortHead(h string) string {
+	if len(h) > 12 {
+		return h[:12] + "…"
+	}
+	return h
+}
+
+// verifyManifestDrift anchors the installed HEAD via the version's receipt,
+// proves `vfox use` reports `sdk.drift` exactly when the SDK moves (simulated
 // `flutter upgrade`), and goes quiet again once restored.
 func verifyManifestDrift(ctx context.Context, t *testing.T, ctr tc.Container, box slotBox, activation, version, sdk string) {
 	t.Helper()
-	anchor := manifestAnchor(ctx, t, ctr, box, sdk)
-	t.Log("PASS the SDK carries a .vfox-manifest")
+	anchor := receiptAnchor(ctx, t, ctr, box, sdk)
+	t.Log("PASS the version carries a receipt with the Fingerprint head")
 
 	installedHead := strings.TrimSpace(execOK(ctx, t, ctr,
 		"git -C "+pwshQuote(sdk)+" rev-parse HEAD", box.vars...))
-	require.Equal(t, installedHead, anchor, "the .vfox-manifest anchor does not match the installed git HEAD")
-	t.Log("PASS the .vfox-manifest anchor matches the installed git HEAD")
+	require.Equal(t, installedHead, anchor, "the receipt anchor does not match the installed git HEAD")
+	t.Log("PASS the receipt anchor matches the installed git HEAD")
 
 	use := func() string {
 		return execOK(ctx, t, ctr,
@@ -102,7 +117,7 @@ func verifyManifestDrift(ctx context.Context, t *testing.T, ctr tc.Container, bo
 			box.vars...)
 	}
 
-	require.NotContains(t, use(), "has drifted", "a freshly installed SDK reports no drift")
+	require.NotContains(t, use(), "has changed since vfox installed it", "a freshly installed SDK reports no drift")
 
 	execOK(ctx, t, ctr,
 		"git -C "+pwshQuote(sdk)+" commit --allow-empty -q -m 'simulated flutter upgrade'",
@@ -115,17 +130,19 @@ func verifyManifestDrift(ctx context.Context, t *testing.T, ctr tc.Container, bo
 		"git -C "+pwshQuote(sdk)+" rev-parse HEAD", box.vars...))
 
 	drifted := use()
-	require.Contains(t, drifted, "has drifted from the version vfox installed", "drift warning")
-	require.Contains(t, drifted, anchor, "drift warning expected head")
-	require.Contains(t, drifted, driftedHead, "drift warning current head")
-	require.Contains(t, drifted, "vfox uninstall flutter@"+version, "drift warning restore command")
-	require.Contains(t, drifted, "vfox install  flutter@"+version, "drift warning restore command")
-	require.Contains(t, drifted, "vfox use      flutter@"+version, "drift warning restore command")
+	require.Contains(t, drifted, "has changed since vfox installed it", "drift warning")
+	require.Contains(t, drifted, "head: "+shortHead(anchor)+" -> "+shortHead(driftedHead), "drift warning heads")
+	require.Contains(t, drifted, "vfox install --reinstall flutter@"+version, "drift warning reinstall command")
 	require.Contains(t, drifted, "vfox install flutter@<new-version>", "drift warning upgrade command")
+
+	doctor := execOK(ctx, t, ctr,
+		activatedEnv(activation, fmt.Sprintf("vfox doctor %s", pwshQuote("flutter@"+version))),
+		box.vars...)
+	require.Contains(t, doctor, "has changed since vfox installed it", "vfox doctor reports the same drift")
 
 	execOK(ctx, t, ctr,
 		"git -C "+pwshQuote(sdk)+" reset -q --hard "+pwshQuote(anchor), box.vars...)
-	require.NotContains(t, use(), "has drifted", "a restored SDK reports no drift")
+	require.NotContains(t, use(), "has changed since vfox installed it", "a restored SDK reports no drift")
 }
 
 // NOTE: there is deliberately no first-run rebuild check on Windows.

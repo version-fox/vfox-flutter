@@ -80,6 +80,90 @@ local function isEmptyTable(table)
     return next(table) == nil
 end
 
+local function trim(s)
+    if type(s) ~= "string" then
+        return nil
+    end
+    local t = s:match("^(.-)%s*$")
+    if t == "" then
+        return nil
+    end
+    return t
+end
+
+local function readTrimmed(path)
+    local f = io.open(path, "r")
+    if f == nil then
+        return nil
+    end
+    local content = f:read("*a")
+    f:close()
+    return trim(content)
+end
+
+-- The git directory of an SDK, without running any process. `sdkRoot` is the
+-- SDK itself (what Fingerprint gets as `ctx.path`); `version` covers the older
+-- layout where the hook was given the version directory that holds
+-- `flutter-<version>`. Returns nil when there is no `.git/HEAD` to read.
+local function gitDirFor(sdkRoot, version)
+    if type(sdkRoot) ~= "string" or sdkRoot == "" then
+        return nil
+    end
+    if hasGitDir(sdkRoot) then
+        return joinPath(sdkRoot, ".git")
+    end
+    if type(version) == "string" and version ~= "" then
+        local candidate = joinPath(sdkRoot, "flutter-" .. version)
+        if hasGitDir(candidate) then
+            return joinPath(candidate, ".git")
+        end
+    end
+    return nil
+end
+
+local function headFromPackedRefs(gitDir, ref)
+    local packed = readTrimmed(joinPath(gitDir, "packed-refs"))
+    if packed == nil then
+        return nil
+    end
+    for line in (packed .. "\n"):gmatch("(.-)\n") do
+        line = trim(line)
+        if line ~= nil and line:sub(1, 1) ~= "#" and line:sub(1, 1) ~= "^" then
+            local hash, name = line:match("^(%x+)%s+(%S+)$")
+            if hash ~= nil and name == ref then
+                return hash
+            end
+        end
+    end
+    return nil
+end
+
+local function headFromHeadFile(gitDir)
+    local head = readTrimmed(joinPath(gitDir, "HEAD"))
+    if head == nil then
+        return nil
+    end
+    local ref = head:match("^ref:%s*(.+)$")
+    if ref == nil then
+        -- Detached HEAD: the file holds the commit itself.
+        if head:match("^[0-9a-fA-F]+$") ~= nil then
+            return head
+        end
+        return nil
+    end
+    ref = trim(ref)
+    if ref == nil then
+        return nil
+    end
+    -- A slash in a ref is a path separator inside `.git`, even on Windows.
+    local refPath = gitDir .. "/" .. ref
+    local hash = readTrimmed(refPath)
+    if hash ~= nil then
+        return hash
+    end
+    return headFromPackedRefs(gitDir, ref)
+end
+
 local M = {}
 
 function M.gitRoot(sdkRoot)
@@ -191,6 +275,20 @@ function M.checkDrift(sdkRoot)
         return true, "head-drifted"
     end
     return false, "ok"
+end
+
+-- The commit the SDK checkout is at, read from files only: no processes, no
+-- network, fast enough for the Fingerprint hook which runs on every
+-- `vfox use`. Returns nil when there is nothing to check (no `.git`, an
+-- unreadable HEAD), so the caller returns no facts and vfox stays silent.
+-- `version` is the installed name (`ctx.version`); it only covers the older
+-- layout where the SDK lives in `flutter-<version>` below the given path.
+function M.fingerprintHead(sdkRoot, version)
+    local gitDir = gitDirFor(sdkRoot, version)
+    if gitDir == nil then
+        return nil
+    end
+    return headFromHeadFile(gitDir)
 end
 
 -- vfox extracts archives with Go's archive/tar (see

@@ -19,7 +19,14 @@ local fixture, requests, mirror, sleeps
 -- of the request that returns what http.get returns, and the releases that its 200 carries.
 local gitcode, gitcodeReleases
 local originalGetenv = os.getenv
+-- A test sets testEnvOverrides to run with a scratch environment instead of
+-- the real one: lookups hit the table first, and anything it does not name
+-- reads as absent.
+local testEnvOverrides = nil
 os.getenv = function(name)
+    if testEnvOverrides ~= nil then
+        return testEnvOverrides[name]
+    end
     if name == "FLUTTER_STORAGE_BASE_URL" then
         return mirror
     end
@@ -582,6 +589,214 @@ tests[#tests + 1] = {
                 tostring(err)
             )
         end
+    end,
+}
+tests[#tests + 1] = {
+    "the running vfox is recognised as new enough for Fingerprint",
+    function()
+        setup("linux", "amd64")
+        assert(supportsFingerprint("1.1.0") == true)
+        assert(supportsFingerprint("v1.1.0") == true)
+        assert(supportsFingerprint("2.0.0") == true)
+        assert(supportsFingerprint("1.0.13") == false)
+        assert(supportsFingerprint("0.6.0") == false)
+        assert(supportsFingerprint("1.0.0") == false)
+        RUNTIME.version = "1.1.0"
+        assert(supportsFingerprint(nil) == true)
+        assert(supportsFingerprint("") == true)
+        RUNTIME.version = "1.0.13"
+        assert(supportsFingerprint(nil) == false)
+        RUNTIME.version = nil
+        assert(supportsFingerprint(nil) == false)
+        assert(supportsFingerprint("") == false)
+    end,
+}
+tests[#tests + 1] = {
+    "Fingerprint reads the git HEAD from files only",
+    function()
+        setup("linux", "amd64")
+        local manifest = require("manifest")
+        local base = os.tmpname()
+        os.remove(base)
+        local function write(path, text)
+            local dir = path:match("^(.+)/[^/]+$")
+            os.execute("mkdir -p '" .. dir .. "'")
+            local f = assert(io.open(path, "wb"))
+            f:write(text)
+            f:close()
+        end
+        local function head(path, version)
+            return manifest.fingerprintHead(path, version)
+        end
+        -- detached HEAD in the SDK root
+        write(base .. "/sdk/.git/HEAD", "abc123def456abc123def456abc123def456abcd\n")
+        equal(head(base .. "/sdk", "3.47.4"), "abc123def456abc123def456abc123def456abcd")
+        -- a ref that lives in its own file
+        write(base .. "/ref/.git/HEAD", "ref: refs/heads/beta\n")
+        write(base .. "/ref/.git/refs/heads/beta", "cafecafecafecafecafecafecafecafecafecafe\n")
+        equal(head(base .. "/ref", "3.47.4"), "cafecafecafecafecafecafecafecafecafecafe")
+        -- a ref that only lives in packed-refs
+        write(base .. "/packed/.git/HEAD", "ref: refs/heads/stable\n")
+        write(
+            base .. "/packed/.git/packed-refs",
+            "# pack-refs\ndeadbeefdeadbeefdeadbeefdeadbeefdeadbeef refs/heads/stable\n"
+        )
+        equal(head(base .. "/packed", "3.47.4"), "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef")
+        -- the older layout where the hook is given the version directory
+        write(base .. "/ver/flutter-1.0/.git/HEAD", "1111111111111111111111111111111111111111\n")
+        equal(head(base .. "/ver", "1.0"), "1111111111111111111111111111111111111111")
+        -- nothing to check is silent: no .git, no HEAD, empty path
+        equal(head(base .. "/nosuch", "1.0"), nil)
+        equal(head("", "1.0"), nil)
+        equal(head(base .. "/sdk", nil), "abc123def456abc123def456abc123def456abcd")
+        os.execute("rm -rf '" .. base .. "'")
+    end,
+}
+tests[#tests + 1] = {
+    "Fingerprint returns the head fact and is silent without git",
+    function()
+        setup("linux", "amd64")
+        dofile("hooks/fingerprint.lua")
+        local base = os.tmpname()
+        os.remove(base)
+        os.execute("mkdir -p '" .. base .. "/sdk/.git'")
+        local f = assert(io.open(base .. "/sdk/.git/HEAD", "wb"))
+        f:write("abc123def456abc123def456abc123def456abcd\n")
+        f:close()
+        local r = PLUGIN:Fingerprint({ path = base .. "/sdk", version = "3.47.4", sdkInfo = {} })
+        assert(r ~= nil and r.facts ~= nil, "Fingerprint must report facts")
+        equal(r.facts.head, "abc123def456abc123def456abc123def456abcd")
+        assert(PLUGIN:Fingerprint({ path = base .. "/nosuch", version = "1.0", sdkInfo = {} }) == nil)
+        -- the main SDK info is a fallback when ctx.path is not the SDK
+        local r2 = PLUGIN:Fingerprint({
+            path = base .. "/nosuch",
+            version = "3.47.4",
+            sdkInfo = { flutter = { path = base .. "/sdk", version = "3.47.4" } },
+        })
+        assert(r2 ~= nil and r2.facts.head == "abc123def456abc123def456abc123def456abcd")
+        os.execute("rm -rf '" .. base .. "'")
+    end,
+}
+tests[#tests + 1] = {
+    "PreUse skips its own warning on vfox with Fingerprint",
+    function()
+        setup("linux", "amd64")
+        dofile("hooks/fingerprint.lua")
+        dofile("hooks/pre_use.lua")
+        -- new vfox: no warning, no manifest read, just the version
+        local out = PLUGIN:PreUse({ version = "3.47.4", runtimeVersion = "1.1.0", installedSdks = {} })
+        equal(out.version, "3.47.4")
+        -- old vfox without a manifest is silent too and still returns the version
+        local out2 = PLUGIN:PreUse({
+            version = "3.47.4",
+            runtimeVersion = "1.0.13",
+            installedSdks = { ["3.47.4"] = { path = "/nosuch-xyz" } },
+        })
+        equal(out2.version, "3.47.4")
+        -- old vfox with RUNTIME.version only
+        RUNTIME.version = "1.0.13"
+        local out3 = PLUGIN:PreUse({ version = "3.47.4", installedSdks = {} })
+        equal(out3.version, "3.47.4")
+    end,
+}
+tests[#tests + 1] = {
+    "Detect only names versions vfox could link",
+    function()
+        setup("linux", "amd64")
+        local detect = require("detect_sdk")
+        assert(detect.validName("3.47.4") == true)
+        assert(detect.validName("3.50.0-0.1.pre") == true)
+        assert(detect.validName("3.41.10-ohos-1.0.0") == true)
+        assert(detect.validName("latest") == false)
+        assert(detect.validName("") == false)
+        assert(detect.validName(nil) == false)
+        assert(detect.validName("../escape") == false)
+        assert(detect.validName("a/b") == false)
+        assert(detect.validName("a b") == false)
+        assert(detect.validName(".hidden") == false)
+        assert(detect.validName("-x") == false)
+    end,
+}
+tests[#tests + 1] = {
+    "Detect finds manager and manual installs by their version file",
+    function()
+        setup("linux", "amd64")
+        dofile("hooks/detect.lua")
+        local base = os.tmpname()
+        os.remove(base)
+        local function write(path, text)
+            local dir = path:match("^(.+)/[^/]+$")
+            os.execute("mkdir -p '" .. dir .. "'")
+            local f = assert(io.open(path, "wb"))
+            f:write(text or "")
+            f:close()
+        end
+        local function sdk(root, version)
+            write(root .. "/bin/flutter", "#!/bin/sh\n")
+            os.execute("chmod +x '" .. root .. "/bin/flutter'")
+            if version ~= nil then
+                write(root .. "/version", version .. "\n")
+            end
+        end
+        -- a mise-style versioned install, an asdf-style one, an FVM one and
+        -- a manual one, plus three directories that are not SDKs
+        sdk(base .. "/mise/installs/flutter/3.47.4", "3.47.4")
+        sdk(base .. "/mise/installs/flutter/junk-no-bin", nil)
+        sdk(base .. "/asdf/installs/flutter/3.44.0", "3.44.0")
+        sdk(base .. "/fvm/versions/3.50.0-0.1.pre", "3.50.0-0.1.pre")
+        sdk(base .. "/manual/flutter", "2.10.0")
+        sdk(base .. "/stripped/flutter", nil)
+        write(base .. "/asdf/installs/flutter/empty/version", "latest\n")
+        testEnvOverrides = {
+            HOME = base .. "/home",
+            MISE_DATA_DIR = base .. "/mise",
+            ASDF_DATA_DIR = base .. "/asdf",
+        }
+        -- $HOME only holds the FVM and manual installs here
+        os.execute("mkdir -p '" .. base .. "/home/fvm/versions'")
+        os.execute("cp -r '" .. base .. "/fvm/versions/3.50.0-0.1.pre' '" .. base .. "/home/fvm/versions/'")
+        os.execute("cp -r '" .. base .. "/manual/flutter' '" .. base .. "/home/flutter'")
+        local found = PLUGIN:Detect({})
+        testEnvOverrides = nil
+        assert(found ~= nil and #found == 4, "expected 4 SDKs, got " .. tostring(found and #found))
+        local byVersion = {}
+        for _, info in ipairs(found) do
+            byVersion[info.version] = info
+        end
+        equal(byVersion["3.47.4"].note, "mise")
+        assert(byVersion["3.47.4"].path == base .. "/mise/installs/flutter/3.47.4", byVersion["3.47.4"].path)
+        equal(byVersion["3.44.0"].note, "asdf")
+        equal(byVersion["3.50.0-0.1.pre"].note, "FVM")
+        equal(byVersion["2.10.0"].note, "manual install")
+        -- nothing to find reads as nothing found
+        testEnvOverrides = { HOME = base .. "/nosuch" }
+        assert(PLUGIN:Detect({}) == nil)
+        testEnvOverrides = nil
+        os.execute("rm -rf '" .. base .. "'")
+    end,
+}
+tests[#tests + 1] = {
+    "Detect lists directories the Windows way there",
+    function()
+        setup("linux", "amd64")
+        dofile("hooks/detect.lua")
+        local seen = {}
+        local popen = io.popen
+        rawset(io, "popen", function(cmd)
+            table.insert(seen, cmd)
+            return nil
+        end)
+        RUNTIME = { osType = "windows", archType = "amd64" }
+        testEnvOverrides = { HOME = "C:\\Users\\tester" }
+        assert(PLUGIN:Detect({}) == nil)
+        testEnvOverrides = nil
+        rawset(io, "popen", popen)
+        RUNTIME = { osType = "linux", archType = "amd64" }
+        local listed = false
+        for _, cmd in ipairs(seen) do
+            listed = listed or cmd:find("dir /b", 1, true) ~= nil
+        end
+        assert(listed, "Detect must list directories with dir on Windows")
     end,
 }
 

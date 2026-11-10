@@ -14,6 +14,8 @@
 
 local manifest = require("manifest")
 
+require("util")
+
 local REASON = {
     ["head-drifted"] = "the SDK's git HEAD no longer matches the commit vfox installed",
     ["sdk-no-longer-git"] = "vfox can no longer read the SDK's git HEAD (its .git may be broken)",
@@ -58,6 +60,14 @@ To upgrade to a newer version, use vfox directly:
 end
 
 function PLUGIN:PreUse(ctx)
+    -- vfox 1.1.0 records the Fingerprint fact in the version's receipt and
+    -- reports drift itself (`sdk.drift` after `vfox use` and in `vfox doctor`,
+    -- fixed with `vfox install --reinstall`). Printing the plugin's own
+    -- warning as well would report the same problem twice, so the check below
+    -- only runs on older vfox which never loads `hooks/fingerprint.lua`.
+    if supportsFingerprint(ctx and ctx.runtimeVersion) then
+        return { version = ctx.version }
+    end
     local sdk = ctx.installedSdks and ctx.installedSdks[ctx.version]
     if sdk == nil or sdk.path == nil or sdk.path == "" then
         return { version = ctx.version }

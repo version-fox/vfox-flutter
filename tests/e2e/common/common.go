@@ -317,7 +317,15 @@ func ContainerName(slug string) string {
 	return "vfox-flutter-e2e-" + slug + "-" + hex.EncodeToString(b[:])
 }
 
-// Manifest is the anchored-install record the plugin writes into the SDK.
+// Manifest is the anchored-install record the plugin wrote into the SDK
+// before the Fingerprint hook (plugin versions before the receipt).
 type Manifest struct {
 	ExpectedHead string `json:"expected_head"`
+}
+
+// Receipt is what vfox 1.1.0+ records in the version directory
+// (`.vfox-receipt.json`): where the version came from and, when the plugin
+// implements Fingerprint, the facts that identify it.
+type Receipt struct {
+	Facts map[string]string `json:"facts"`
 }

@@ -23,99 +23,137 @@ too, and the same goes for them.
 
 ## Recovering a drifted SDK
 
-If you already upgraded in place, this plugin prints a warning on every
-`vfox use` of that version and shows the commands that restore it:
+If you already upgraded in place, restore the version with:
 
 ```bash
-vfox uninstall flutter@3.47.0
-vfox install  flutter@3.47.0
-vfox use      flutter@3.47.0
+vfox install --reinstall flutter@3.47.0
 ```
+
+`vfox doctor` reports the same finding (`sdk.drift`).
+
+## An SDK installed by another manager
+
+A Flutter that is already on this machine, from Homebrew, mise, asdf, FVM or
+a manual install, can be used through vfox without downloading it again.
+Let vfox find it:
+
+```bash
+vfox link --detect flutter
+vfox use --global flutter@3.47.4
+```
+
+`--detect` looks in the usual places (Homebrew's Caskroom, the install
+directories of mise and asdf, FVM's versions, a few manual-install locations)
+and links what it finds. What is already installed or linked is skipped,
+with the reason. Anything elsewhere is for the manual form, with the
+directory that holds `bin`:
+
+```bash
+vfox link flutter@brew-3.47.4 <path-to-the-flutter-sdk>
+vfox use --global flutter@brew-3.47.4
+```
+
+Google ships a full `.git` checkout in every release archive no matter who
+downloads it, so the Fingerprint fact is the same `head`, and an in-place
+change (for example `brew upgrade`) shows up the same way, with two
+differences: vfox does not own that SDK, so the finding is an info-level
+notice in `vfox doctor` only (`Found 0 errors, 0 warnings and 1 notice`),
+and there is no `Fix:` line. `vfox install --reinstall` refuses a linked
+version; upgrade or remove that SDK with its own manager, or run
+`vfox uninstall flutter@<name>` to remove just the link (the SDK itself is
+left untouched). A linked directory without a `.git` records no fact and
+stays silent, like an install without one.
+
+If the other manager's `flutter` keeps running instead of the one `vfox use`
+selected, its directory sits earlier in `PATH`: `command -v flutter` shows
+which one wins, and `vfox doctor` names the shadowing directory
+(`path.shadowed`). What stays in front is decided by vfox's
+[`path.mode`](https://vfox.dev/guides/configuration.html#path-order-settings).
 
 ## The warning
 
-This is what `vfox use flutter@3.47.4` prints once the SDK's HEAD is not the commit vfox
-installed:
+This needs vfox 1.1.0 or later, which records the installation and compares it
+again on every `vfox use`. This is what `vfox use flutter@3.47.4` prints once
+the SDK's HEAD is not the commit vfox installed:
 
 ```
-Warning: flutter SDK at ~/.vfox/cache/flutter/v-3.47.4 has drifted from the version vfox installed.
-  vfox installed: flutter@3.47.4 (git HEAD 9584c6713b324636289d067944a46fd6b49df14b)
-  current git HEAD: abaf9c523780a608bd46686fd5e53740a07077f8
-  reason: the SDK's git HEAD no longer matches the commit vfox installed
-
-This typically happens when `flutter upgrade` or a similar in-place command
-is run inside a vfox-managed SDK. vfox manages SDK versions by directory and
-does not track in-place mutations, so the version you get may differ from
-the one you asked for.
-
-To restore flutter@3.47.4:
-  vfox uninstall flutter@3.47.4
-  vfox install  flutter@3.47.4
-  vfox use      flutter@3.47.4
-
-To upgrade to a newer version, use vfox directly:
-  vfox install flutter@<new-version>
-  vfox use     flutter@<new-version>
+flutter@3.47.4 has changed since vfox installed it (head: 9584c6713b32… -> abaf9c523780…).
+  Something modified the SDK in place, for example a self-update command. vfox manages versions by directory and does not track that.
+  To move to a newer version, install it with vfox instead: vfox install flutter@<new-version>
+  Fix: vfox install --reinstall flutter@3.47.4
 ```
 
-There are two reasons, and the line after `reason:` says which:
-
-| Reason | Meaning |
-| --- | --- |
-| `the SDK's git HEAD no longer matches the commit vfox installed` | The commit changed. This is what `flutter upgrade`, `flutter downgrade`, `flutter channel` and `git checkout` do |
-| `vfox can no longer read the SDK's git HEAD (its .git may be broken)` | `git` fails in the SDK: the `.git` directory is damaged, or `git` is not installed any more |
-
-The path in the first line is the directory that `vfox info flutter@3.47.4` prints. The
-SDK is the `flutter-3.47.4` directory inside it.
-
-## How the check works
-
-On install the plugin writes a `.vfox-manifest` file next to the SDK's `.git`,
-recording the expected git HEAD, and re-checks it on each `vfox use`.
-
-The manifest is a small JSON file in the root of the SDK, `flutter-3.47.4/.vfox-manifest`:
-
-```json
-{"expected_head":"9584c6713b324636289d067944a46fd6b49df14b","installed_at":1792523751,"plugin":"vfox-flutter","plugin_version":"0.2.5","version":"3.47.4"}
-```
-
-`expected_head` is what `git rev-parse HEAD` printed right after vfox unpacked the SDK, and
-`installed_at` is the time of the install in seconds since 1970. The check runs
-`git rev-parse HEAD` again on `vfox use` and compares the two. Archive installs, source
-installs and OpenHarmony builds all get a manifest. `git status` in the SDK lists the file
-as untracked.
+The `head:` part names the recorded commit first and the current one second,
+both shortened. When the current HEAD cannot be read at all (its `.git` is
+damaged), it reads `unreadable` instead of a commit.
 
 The warning is only a warning: `vfox use` still selects the version you asked
 for, and exits with 0. SDKs without a `.git` directory are left alone.
 
-Nothing is checked when there is nothing to compare with: an SDK without a manifest (one
-installed by a plugin older than 0.2.3), a manifest without `expected_head` (the install
-ran where `git` was missing), and a version vfox does not know are all silent.
+With vfox older than 1.1.0 the plugin prints its own warning instead (it never
+loads the `Fingerprint` hook), with the commands that reinstall the version by
+hand. Update vfox to get the check above.
+
+## How the check works
+
+On install and on `vfox link` the plugin reports the commit the SDK checkout
+is at through its `Fingerprint` hook, by reading `.git/HEAD` (and the ref or
+`packed-refs` it points to) from files only. vfox keeps that fact in the
+version's receipt, `.vfox-receipt.json` in the directory that
+`vfox info flutter@3.47.4` prints:
+
+```json
+{
+  "schema": 1,
+  "sdk": "flutter",
+  "version": "3.47.4",
+  "origin": "installed",
+  "facts": {
+    "head": "9584c6713b324636289d067944a46fd6b49df14b"
+  }
+}
+```
+
+`vfox use` and `vfox doctor` report `sdk.drift` when the fact is no longer the
+same. Archive installs, source installs and OpenHarmony builds all report it.
+A fact the plugin can no longer read counts as a change too.
+
+Nothing is checked when there is nothing to compare with: an SDK without a
+fact (one installed where there was no `.git` to read), a version installed
+before vfox kept receipts (see `vfox doctor --adopt` below), and a version
+vfox does not know are all silent.
+
+Versions installed by a plugin older than this one may still carry a
+`.vfox-manifest` file in the SDK root (`flutter-3.47.0/.vfox-manifest`). The
+current plugin neither writes nor reads it; it is ignored and can be deleted.
+It shows as untracked in the SDK's `git status` while it is there.
+
+A version installed before vfox kept receipts has no receipt to compare with.
+`vfox doctor` says so (`sdk.no-receipt`), and takes the current state as the
+baseline on request:
+
+```bash
+vfox doctor --adopt flutter@3.47.0
+```
 
 ## Disabling the check
 
-Delete the `.vfox-manifest` file of the affected installation. The file is
-written by a real install, so it comes back only after you uninstall and
-reinstall that version; `vfox install` alone skips an already-installed
-version and leaves it absent.
-
-`vfox info --format '{{.Path}}' flutter@3.47.0` prints the directory above the SDK, so the
-manifest is one level further down, in `flutter-3.47.0`. The directory is named after the
-installed name, which carries an architecture suffix if you installed with one
-(`flutter-3.47.0-x64`).
-
-### Ubuntu 26.04.1
-
-Execute in Bash,
+The check is one of the fast checks `vfox use` runs after it selects a version.
+To stop running them:
 
 ```bash
-rm "$(vfox info --format '{{.Path}}' flutter@3.47.0)/flutter-3.47.0/.vfox-manifest"
+vfox config diagnostics.onUse false
 ```
 
-### Windows 11
+To silence only this finding for one version, add it to `diagnostics.ignore` in
+your `config.yaml`:
 
-Assume that PowerShell 7 is already installed. Execute in PowerShell 7,
-
-```powershell
-Remove-Item "$(vfox info --format '{{.Path}}' flutter@3.47.0)/flutter-3.47.0/.vfox-manifest"
+```yaml
+diagnostics:
+  ignore:
+    - "sdk.drift:flutter@3.47.0"
 ```
+
+See vfox's [configuration](https://vfox.dev/guides/configuration.html#diagnostics-settings)
+and [`vfox doctor`](https://vfox.dev/usage/core-commands.html#doctor) for the
+rest of the findings.

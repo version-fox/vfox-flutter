@@ -8,13 +8,16 @@
 metadata.lua              plugin name, version, oldest vfox, and the note that `vfox add` prints
 hooks/available.lua       vfox search: the list of every name
 hooks/pre_install.lua     vfox install: resolve a name to a package; and PostInstall
-hooks/pre_use.lua         vfox use: warn when the SDK has drifted
+hooks/pre_use.lua         vfox use: the drift check for vfox older than 1.1.0
+hooks/fingerprint.lua     vfox use / doctor on vfox 1.1.0+: the git HEAD fact
+hooks/detect.lua          vfox link --detect on vfox 1.1.0+: find SDKs already on the machine
 hooks/env_keys.lua        PATH
-lib/util.lua              the mirror, the platform, version names and their order
+lib/util.lua              the mirror, the platform, version names, their order, and the vfox version gate
 lib/git.lua               git commands, the GitHub mirror, the work directory
 lib/source.lua            source installs on Linux ARM64 and Windows ARM64
 lib/ohos.lua              OpenHarmony releases and checkouts
-lib/manifest.lua          .vfox-manifest and the pubspec.lock fix
+lib/manifest.lua          the Fingerprint HEAD reader, the legacy `.vfox-manifest`, and the pubspec.lock fix
+lib/detect_sdk.lua        the well-known install locations and SDK identification for Detect
 tests/hooks_test.lua      offline hook tests
 tests/e2e/                container tests, see e2e.md
 Injection.lua             type hints for what vfox injects, never loaded
@@ -30,8 +33,8 @@ vfox loads `metadata.lua`, calls a hook when a command needs it, and puts `PLUGI
 | You run | Hooks |
 | --- | --- |
 | `vfox search flutter` | `Available` |
-| `vfox install flutter@3.47.4` | `PreInstall` returns the package, and calls `Available` itself to find it. vfox downloads, verifies and unpacks, then calls `PostInstall` |
-| `vfox use flutter@3.47.4` | `PreUse` checks the SDK and returns the name. `EnvKeys` provides `PATH` |
+| `vfox install flutter@3.47.4` | `PreInstall` returns the package, and calls `Available` itself to find it. vfox downloads, verifies and unpacks, then calls `PostInstall`. vfox 1.1.0+ records the `Fingerprint` fact in the receipt then |
+| `vfox use flutter@3.47.4` | vfox 1.1.0+ compares the `Fingerprint` fact and reports `sdk.drift`. Older vfox runs `PreUse`, which checks the SDK and returns the name. `EnvKeys` provides `PATH` |
 | `vfox uninstall flutter@3.47.4` | none, the name has to be exact |
 
 ## Contracts that cost time
@@ -41,10 +44,12 @@ vfox loads `metadata.lua`, calls a hook when a command needs it, and puts `PLUGI
 - `PreInstall` calls `self:Available({ officialOnly = true })` and so does not use vfox's 12-hour cache of the list. Every install reads the index. `officialOnly` leaves out the OpenHarmony releases: an official install has no use for them, and gitcode.com rate-limits the API they come from. vfox calls `Available` with its own context (`vfox search`, and the `latest` of `vfox install`), and those lists have them.
 - `PreInstall` returns `nil` for a name it cannot resolve, which vfox reports as `no installable runtime provided`. It raises an error for a failure: the message of `error()` shows up in the `plugin [PreInstall] method error:` line.
 - The index lists some releases more than once. `newestPublications` in `hooks/available.lua` keeps the newest entry (`release_date`) of each archive of a version, because a file that was uploaded again has the checksum of the newest entry only (see [troubleshooting.md](troubleshooting.md#checksum-error)). Different versions never merge, and a release in two channels has an archive in each and keeps both. `table.sort` is not stable, so the comparator has to tell any two entries apart, or equal entries come out in an order that depends on the whole input, and `PreInstall` takes the first match. It ends with the version and the channel for that.
-- `PostInstall` reads `ctx.sdkInfo[PLUGIN.name]`. It runs the manifest and the `pubspec.lock` fix under `pcall`, so a failure there never fails the install.
+- `PostInstall` reads `ctx.sdkInfo[PLUGIN.name]`. It runs the `pubspec.lock` fix under `pcall`, so a failure there never fails the install. The legacy `.vfox-manifest` is only written when the running vfox is older than 1.1.0 (`supportsFingerprint` in `lib/util.lua`): newer vfox records the `Fingerprint` fact in the version's receipt instead.
+- `Fingerprint` reports the commit the SDK checkout is at as `facts.head`, by reading `.git/HEAD` (and the ref or `packed-refs` it points to) from files only: no processes, no network, well under the 50 ms the hook must keep. It returns nil when there is nothing to check (no `.git`), and vfox stays silent then. Archive installs, source installs and OpenHarmony builds all report it, as do linked copies that still carry their `.git` (Homebrew, mise, asdf, FVM, manual installs). `PreUse` skips its own drift check on vfox 1.1.0+ (`supportsFingerprint(ctx.runtimeVersion)`) so the same drift is not reported twice; older vfox keeps the plugin's own warning from `.vfox-manifest`.
+- `Detect` scans the well-known install locations for `vfox link --detect`: Homebrew's Caskroom (macOS), the install directories of mise (`$MISE_DATA_DIR`, else `~/.local/share/mise`) and asdf (`$ASDF_DATA_DIR`, else `~/.asdf`), FVM's versions, and a few manual-install directories (plus `C:\src\flutter` on Windows). A candidate is an SDK when its `bin` holds `flutter` (or `flutter.bat`) and its root `version` file names a version vfox could link under; the note says where it was found. `lib` modules must not share a hook's filename: vfox searches `hooks/` before `lib/`, so `require("detect")` would load `hooks/detect.lua` and loop, which is why the module lives in `lib/detect_sdk.lua`.
 - vfox unpacks a `.tar.xz` with Go's `archive/tar`, which stamps files with the time of the extraction and not with the time stored in the archive. The official `tar -xf` flow keeps those times, and `packages/flutter_tools/pubspec.lock` is newer than `pubspec.yaml` after it. After a vfox install the two share the time of the extraction, and whichever is written last looks newer, so `bin/internal/shared.sh` can find `pubspec.yaml` newer than `pubspec.lock` and rebuild the tool on the first run (`Building flutter tool...`). `manifest.touchPubspecLock` rewrites `pubspec.lock`, on every platform, to restore the order ([#37](https://github.com/version-fox/vfox-flutter/issues/37)). Source installs build the tool on the first run by design.
 - A Windows command line reaches `cmd.exe` as vfox 1.0.13 and later write it, unchanged ([vfox#712](https://github.com/version-fox/vfox/pull/712)), and older versions quote it again. `quote` in `lib/git.lua` and `lib/manifest.lua` puts double quotes around a path that contains whitespace, and leaves other paths bare, so that a path with a space works on 1.0.13 and a path without one still works on older versions.
-- `os.execute` reports success as `0` or as `true`, depending on the Lua it runs in, and `exec` in `lib/git.lua` accepts both. `io.popen` is how the plugin reads the output of `git`; a command that prints nothing or fails reads as `nil`, which is why a missing `git` goes unnoticed in `lib/manifest.lua`.
+- `os.execute` reports success as `0` or as `true`, depending on the Lua it runs in, and `exec` in `lib/git.lua` accepts both. `io.popen` is how the plugin reads the output of `git` outside `Fingerprint` (the legacy drift check, the `git` commands of source installs) and how `Detect` lists install directories; a command that prints nothing or fails reads as `nil`, which is why a missing `git` goes unnoticed in `lib/manifest.lua`. `Fingerprint` itself never uses `io.popen` or `os.execute`.
 - `lib/git.lua` takes the work directory from `VFOX_HOME`, then `HOME`, then `USERPROFILE`, and appends `.vfox/tmp/<name>`. With `VFOX_HOME` set that is `$VFOX_HOME/.vfox/tmp/<name>`, one `.vfox` below the vfox home. The directory is not removed when the install fails.
 - `git` runs with your configuration, except for two settings that `git.init` writes into the checkout: `core.longpaths=true`, and `core.autocrlf=false`, because a global `true` writes Flutter's shell scripts with CRLF (see [arm64.md](arm64.md#limits)). On Windows `false` writes the same CRLF files `true` does, since `core.eol` is native there. That is how git works, and it was checked on Linux with `core.eol=crlf` and Flutter's `.gitattributes`, which starts with `* text=auto`: the same files came out CRLF for both settings, and `bin/flutter` stayed LF. The Windows ARM64 container tests install from a checkout like this one. Fetches get `http.lowSpeedLimit=1000` and `http.lowSpeedTime=60`, which `GIT_HTTP_LOW_SPEED_LIMIT` and `GIT_HTTP_LOW_SPEED_TIME` override.
 - `lib/ohos.lua` waits for gitcode.com in two ways. Installing a build needs the releases, and makes five attempts: 10 seconds apart, and 30, 60, 120 and 180 seconds after HTTP 429. Listing them is a courtesy to `vfox search`, so `ohos.list()` makes two attempts 2 seconds apart, stops at HTTP 429, and returns `nil` and the reason. `Available` then writes one warning line to stderr and lists the official releases.
@@ -106,7 +111,7 @@ Run it from the repository root. The test stubs `http`, `json` and `os.getenv`, 
 - a checkout does not take `core.autocrlf` from your git configuration (this one runs real `git`, and skips itself without it);
 - an unsupported CPU is named in the message.
 
-The manifest and `PreUse` are not in this file, and source installs and OpenHarmony builds only up to their `git` commands. The container tests cover them, see [e2e.md](e2e.md). Lint, license headers and the container tests are in [e2e.md](e2e.md#local-checks).
+The `Fingerprint` file reader and the `PreUse` version gate are not in this file either; `Detect` is (manager layouts, version-file naming, and the Windows listing). The container tests cover the drift end to end, see [e2e.md](e2e.md). Lint, license headers and the container tests are in [e2e.md](e2e.md#local-checks).
 
 To call a single hook, vfox 1.0.13 and later has `vfox plugin run`. It does not register the plugin, and `--os` and `--arch` answer for another platform:
 
@@ -119,7 +124,7 @@ Both ask the real index and gitcode.com. A source install (`--os linux --arch ar
 
 ### Trying a change without downloading gigabytes
 
-An archive is 1.6 to 2.3 GB, so a change to the resolution is cheaper to try against a fake mirror: a copy of the real index whose archives are one tiny SDK. The SDK holds a `flutter/bin/flutter` script and a real git repository, so the manifest and the drift check run for real. Run it on Linux, from the root of the repository. It sets `HOME` and `VFOX_HOME` to a scratch directory, which vfox needs both of, so your real vfox is left alone.
+An archive is 1.6 to 2.3 GB, so a change to the resolution is cheaper to try against a fake mirror: a copy of the real index whose archives are one tiny SDK. The SDK holds a `flutter/bin/flutter` script and a real git repository, so the receipt and the drift check run for real. Run it on Linux, from the root of the repository. It sets `HOME` and `VFOX_HOME` to a scratch directory, which vfox needs both of, so your real vfox is left alone.
 
 ```bash
 work=$(mktemp -d)
@@ -202,7 +207,7 @@ The Linux row of the table is where the script starts to ask (storage has the SD
 - **A new way to name or choose.** Change `hooks/available.lua` (the order) or `hooks/pre_install.lua` (the choice), add a case to `tests/hooks_test.lua`, and update [versions.md](versions.md), [channels.md](channels.md) and [arm64.md](arm64.md) where they describe it.
 - **A new platform.** `getOsTypeAndArch` in `lib/util.lua` lists the CPUs. A platform that installs from git adds itself to `SOURCE_INSTALL_PLATFORMS` and `OLDEST_NATIVE` in `lib/source.lua`. Update [platforms.md](platforms.md) and the tables in [arm64.md](arm64.md), and add it to the container tests if a runner exists ([e2e.md](e2e.md)).
 - **A new source of builds** like OpenHarmony: a module in `lib/` that lists names and checks them out, a branch in `Available`, `PreInstall` and `PostInstall`, a flavor in `tests/e2e/common/common.go` (`DefaultFlavours`, `DefaultOhosVersion`), and a page in `docs/`.
-- **A message.** The container tests assert parts of the drift warning (`tests/e2e/linux/verify.go` and `tests/e2e/windows/verify.go`). Change the Lua and both files together, and the text in [flutter-upgrade.md](flutter-upgrade.md).
+- **A message.** The container tests assert the core's drift report (`tests/e2e/linux/verify.go` and `tests/e2e/windows/verify.go`). Change the Lua and both files together, and the text in [flutter-upgrade.md](flutter-upgrade.md).
 
 ## Known gaps
 
@@ -216,7 +221,7 @@ The Linux row of the table is where the script starts to ask (storage has the SD
 
 ## Releasing
 
-A maintainer runs **Actions → Plugin → Run workflow** on the default branch with the version, without `v`. The [README](../README.md#releasing-this-plugin) describes what the shared workflow does. Afterwards `plugins/flutter.json` in [vfox-plugins](https://github.com/version-fox/vfox-plugins) shows the version that `vfox add flutter` serves. That lags the release by hours: 1 h 22 min for 0.2.2, 4 h for 0.2.3 and 2 h 28 min for 0.2.4. Then bring the docs up to date, in both languages: move the "Unreleased" entries of [changes.md](changes.md) under the new version, dated with the day of the release, name that version as the newest one in its first paragraph, put it in the `plugin_version` of the manifest in [flutter-upgrade.md](flutter-upgrade.md#how-the-check-works), and take the "Unreleased" marks out of the other pages, see [Writing the docs](#writing-the-docs).
+A maintainer runs **Actions → Plugin → Run workflow** on the default branch with the version, without `v`. The [README](../README.md#releasing-this-plugin) describes what the shared workflow does. Afterwards `plugins/flutter.json` in [vfox-plugins](https://github.com/version-fox/vfox-plugins) shows the version that `vfox add flutter` serves. That lags the release by hours: 1 h 22 min for 0.2.2, 4 h for 0.2.3 and 2 h 28 min for 0.2.4. Then bring the docs up to date, in both languages: move the "Unreleased" entries of [changes.md](changes.md) under the new version, dated with the day of the release, name that version as the newest one in its first paragraph, and take the "Unreleased" marks out of the other pages, see [Writing the docs](#writing-the-docs).
 
 ## Writing the docs
 

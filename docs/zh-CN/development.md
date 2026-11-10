@@ -8,13 +8,16 @@
 metadata.lua              插件名、版本、最老的 vfox，以及 `vfox add` 打印的提示
 hooks/available.lua       vfox search：所有名字的列表
 hooks/pre_install.lua     vfox install：把名字解析成一个包；还有 PostInstall
-hooks/pre_use.lua         vfox use：SDK 漂移时给出警告
+hooks/pre_use.lua         vfox use：vfox 老于 1.1.0 时的漂移检查
+hooks/fingerprint.lua     vfox 1.1.0 及更新的版本上，`vfox use` / `doctor` 用的 git HEAD 事实
+hooks/detect.lua          vfox 1.1.0 及更新的版本上，`vfox link --detect` 找机器上已有的 SDK
 hooks/env_keys.lua        PATH
-lib/util.lua              镜像、平台、版本名及其顺序
+lib/util.lua              镜像、平台、版本名及其顺序，还有 vfox 版本的判断
 lib/git.lua               git 命令、GitHub 镜像、工作目录
 lib/source.lua            Linux ARM64 和 Windows ARM64 的源码安装
 lib/ohos.lua              OpenHarmony 发布版本和检出
-lib/manifest.lua          .vfox-manifest 和 pubspec.lock 的修正
+lib/manifest.lua          Fingerprint 的 HEAD 读取、旧的 `.vfox-manifest`，以及 pubspec.lock 的修正
+lib/detect_sdk.lua        给 Detect 用的知名安装位置和 SDK 判定
 tests/hooks_test.lua      离线的 hook 测试
 tests/e2e/                容器测试，见 e2e.md
 Injection.lua             vfox 注入内容的类型提示，从不加载
@@ -30,8 +33,8 @@ vfox 加载 `metadata.lua`，在命令需要时调用 hook，并把 `PLUGIN` 和
 | 你执行 | 用到的 hook |
 | --- | --- |
 | `vfox search flutter` | `Available` |
-| `vfox install flutter@3.47.4` | `PreInstall` 返回包，并自己调用 `Available` 来找它。vfox 下载、验证并解压，然后调用 `PostInstall` |
-| `vfox use flutter@3.47.4` | `PreUse` 检查 SDK 并返回名字。`EnvKeys` 提供 `PATH` |
+| `vfox install flutter@3.47.4` | `PreInstall` 返回包，并自己调用 `Available` 来找它。vfox 下载、验证并解压，然后调用 `PostInstall`。vfox 1.1.0 及更新的版本随后把 `Fingerprint` 事实记进收据 |
+| `vfox use flutter@3.47.4` | vfox 1.1.0 及更新的版本比对 `Fingerprint` 事实并报告 `sdk.drift`。更老的 vfox 运行 `PreUse`，它检查 SDK 并返回名字。`EnvKeys` 提供 `PATH` |
 | `vfox uninstall flutter@3.47.4` | 没有，名字必须准确 |
 
 ## 容易踩坑的约定
@@ -41,10 +44,12 @@ vfox 加载 `metadata.lua`，在命令需要时调用 hook，并把 `PLUGIN` 和
 - `PreInstall` 调用的是 `self:Available({ officialOnly = true })`，所以用不到 vfox 对列表的 12 小时缓存。每次安装都要读索引。`officialOnly` 会略去 OpenHarmony 发布版本：官方版本的安装用不着它们，而且它们来自的 API 被 gitcode.com 限流。vfox 用它自己的上下文调用 `Available`（`vfox search`，以及 `vfox install` 的 `latest`），那样的列表里有它们。
 - `PreInstall` 对解析不了的名字返回 `nil`，vfox 会把它报告成 `no installable runtime provided`。失败时它会抛出错误：`error()` 的内容会出现在 `plugin [PreInstall] method error:` 那一行里。
 - 索引里有些版本不止列了一次。`hooks/available.lua` 里的 `newestPublications` 对一个版本的每个压缩包只保留最新（`release_date`）的那条，因为重新上传过的文件，只有最新那条的校验和才是对的（见 [troubleshooting.md](troubleshooting.md#checksum-error)）。不同的版本绝不会合并，在两个渠道里的版本各有一个压缩包，两条都保留。`table.sort` 不是稳定排序，所以比较函数必须能区分任意两个条目，否则相等的条目出来的顺序取决于整个输入，而 `PreInstall` 取第一个匹配的。为此比较函数最后还比较版本和渠道。
-- `PostInstall` 读取 `ctx.sdkInfo[PLUGIN.name]`。清单和 `pubspec.lock` 的修正都在 `pcall` 里运行，所以那里的失败永远不会让安装失败。
+- `PostInstall` 读取 `ctx.sdkInfo[PLUGIN.name]`。`pubspec.lock` 的修正放在 `pcall` 里，所以那里的失败永远不会让安装失败。旧的 `.vfox-manifest` 只在运行的 vfox 老于 1.1.0 时才写（`lib/util.lua` 里的 `supportsFingerprint`）：新版 vfox 把 `Fingerprint` 事实记在版本的收据里。
+- `Fingerprint` 把 SDK 检出所在的提交作为 `facts.head` 报告，只从文件读 `.git/HEAD`（以及它指向的 ref 或 `packed-refs`）：不跑进程，不访问网络，远快于 hook 要求的 50 毫秒。没有可检查的东西（没有 `.git`）时返回 nil，vfox 就保持安静。压缩包安装、源码安装和 OpenHarmony 构建版本都会报告，还带着 `.git` 的登记副本（Homebrew、mise、asdf、FVM、手动安装）也一样。`PreUse` 在 vfox 1.1.0 及更新的版本上跳过自己的漂移检查（`supportsFingerprint(ctx.runtimeVersion)`），以免同一处漂移报两次；更老的 vfox 保留插件自己的 `.vfox-manifest` 警告。
+- `Detect` 给 `vfox link --detect` 扫描那些人都知道的安装位置：macOS 上 Homebrew 的 Caskroom、mise（`$MISE_DATA_DIR`，否则 `~/.local/share/mise`）和 asdf（`$ASDF_DATA_DIR`，否则 `~/.asdf`）的安装目录、FVM 的 versions，以及几个手动安装的目录（Windows 上还有 `C:\src\flutter`）。`bin` 里有 `flutter`（或 `flutter.bat`）、根目录 `version` 文件写着 vfox 能拿来登记的名字，才算一个 SDK，备注里写它是在哪里找到的。`lib` 里的模块不能和 hook 同名：vfox 先搜 `hooks/` 再搜 `lib/`，所以 `require("detect")` 会载入 `hooks/detect.lua` 自己，造成循环，这就是模块放在 `lib/detect_sdk.lua` 的原因。
 - vfox 用 Go 的 `archive/tar` 解压 `.tar.xz`，它给文件打上的是解压时的时间，而不是压缩包里存的时间。官方的 `tar -xf` 流程会保留那些时间，于是 `packages/flutter_tools/pubspec.lock` 比 `pubspec.yaml` 新。vfox 安装之后，两者共用解压的时间，谁最后写入谁就显得更新，所以 `bin/internal/shared.sh` 可能发现 `pubspec.yaml` 比 `pubspec.lock` 新，在第一次运行时重新构建工具（`Building flutter tool...`）。`manifest.touchPubspecLock` 在所有平台上重写 `pubspec.lock`，把顺序恢复过来（[#37](https://github.com/version-fox/vfox-flutter/issues/37)）。源码安装按设计就要在第一次运行时构建工具。
 - Windows 上的命令行，在 vfox 1.0.13 及更新的版本里原样交给 `cmd.exe`（[vfox#712](https://github.com/version-fox/vfox/pull/712)），更老的版本会再加一层引号。`lib/git.lua` 和 `lib/manifest.lua` 里的 `quote` 只给含有空白字符的路径加双引号，其他路径保持原样，这样带空格的路径在 1.0.13 上可用，不带空格的路径在更老的版本上也依然可用。
-- `os.execute` 报告成功的方式，视所用的 Lua 而定，可能是 `0`，也可能是 `true`，`lib/git.lua` 里的 `exec` 两者都接受。插件读取 `git` 的输出靠的是 `io.popen`；没有输出或失败的命令读出来是 `nil`，所以 `lib/manifest.lua` 里缺少 `git` 时不会有任何察觉。
+- `os.execute` 报告成功的方式，视所用的 Lua 而定，可能是 `0`，也可能是 `true`，`lib/git.lua` 里的 `exec` 两者都接受。插件在 `Fingerprint` 之外读取 `git` 的输出靠的是 `io.popen`（旧的漂移检查、源码安装的 `git` 命令），`Detect` 列安装目录也靠它；没有输出或失败的命令读出来是 `nil`，所以 `lib/manifest.lua` 里缺少 `git` 时不会有任何察觉。`Fingerprint` 本身从不用 `io.popen` 或 `os.execute`。
 - `lib/git.lua` 的工作目录依次取自 `VFOX_HOME`、`HOME`、`USERPROFILE`，再加上 `.vfox/tmp/<名称>`。设置了 `VFOX_HOME` 时就是 `$VFOX_HOME/.vfox/tmp/<名称>`，比 vfox 主目录低一层 `.vfox`。安装失败时这个目录不会被删除。
 - `git` 用的是你的配置，只有 `git.init` 写进检出里的两项设置例外：`core.longpaths=true`，以及 `core.autocrlf=false`，因为全局的 `true` 会让 Flutter 的 shell 脚本带上 CRLF（见 [arm64.md](arm64.md#限制)）。在 Windows 上 `false` 写出的 CRLF 文件和 `true` 一样，因为那里的 `core.eol` 是 native。这是 git 本身的工作方式，我们在 Linux 上用 `core.eol=crlf` 和 Flutter 的 `.gitattributes`（第一条是 `* text=auto`）检查过：两种设置写出的文件同样是 CRLF，`bin/flutter` 则保持 LF。Windows ARM64 的容器测试装的就是这样的检出。拉取时会加上 `http.lowSpeedLimit=1000` 和 `http.lowSpeedTime=60`，`GIT_HTTP_LOW_SPEED_LIMIT` 和 `GIT_HTTP_LOW_SPEED_TIME` 可以覆盖它们。
 - `lib/ohos.lua` 等 gitcode.com 有两种方式。安装构建版本需要发布版本列表，所以尝试五次：间隔 10 秒，遇到 HTTP 429 之后是 30、60、120 和 180 秒。列出它们只是给 `vfox search` 帮个忙，所以 `ohos.list()` 只尝试两次，间隔 2 秒，遇到 HTTP 429 就停，并返回 `nil` 和原因。然后 `Available` 往 stderr 写一行警告，再列出官方版本。
@@ -106,7 +111,7 @@ go run github.com/yuin/gopher-lua/cmd/glua@v1.1.1 tests/hooks_test.lua
 - 检出不会采用你 git 配置里的 `core.autocrlf`（这一项运行真正的 `git`，没有它就跳过）；
 - 不支持的 CPU 会在提示里点出名字。
 
-清单和 `PreUse` 不在这个文件里，源码安装和 OpenHarmony 构建版本也只测到它们的 `git` 命令为止。这些由容器测试覆盖，见 [e2e.md](e2e.md)。lint、许可证头和容器测试见 [e2e.md](e2e.md#本地检查)。
+`Fingerprint` 的文件读取和 `PreUse` 的版本判断不在这个文件里，`Detect` 在（管理器布局、版本文件命名，以及 Windows 的目录列出）。源码安装和 OpenHarmony 构建版本也只测到它们的 `git` 命令为止。这些由容器测试覆盖，见 [e2e.md](e2e.md)。lint、许可证头和容器测试见 [e2e.md](e2e.md#本地检查)。
 
 要单独调用一个 hook，vfox 1.0.13 及更新的版本有 `vfox plugin run`。它不会注册插件，`--os` 和 `--arch` 可以替另一个平台作答：
 
@@ -119,7 +124,7 @@ vfox plugin run . PreInstall --input '{"version":"stable"}' --os darwin --arch a
 
 ### 不下载几个 GB 就试验改动
 
-一个压缩包有 1.6 到 2.3 GB，所以试验解析方面的改动，用一个假镜像更省事：它是真实索引的副本，里面所有的压缩包都换成同一个很小的 SDK。这个 SDK 里有一个 `flutter/bin/flutter` 脚本和一个真正的 git 仓库，所以清单和漂移检查都是真的在运行。请在 Linux 上、仓库根目录里运行。它会把 `HOME` 和 `VFOX_HOME` 设成一个临时目录（vfox 需要这两个都设），所以你真正的 vfox 不会受影响。
+一个压缩包有 1.6 到 2.3 GB，所以试验解析方面的改动，用一个假镜像更省事：它是真实索引的副本，里面所有的压缩包都换成同一个很小的 SDK。这个 SDK 里有一个 `flutter/bin/flutter` 脚本和一个真正的 git 仓库，所以收据和漂移检查都是真的在运行。请在 Linux 上、仓库根目录里运行。它会把 `HOME` 和 `VFOX_HOME` 设成一个临时目录（vfox 需要这两个都设），所以你真正的 vfox 不会受影响。
 
 ```bash
 work=$(mktemp -d)
@@ -202,7 +207,7 @@ done
 - **新的命名或选择方式。** 改 `hooks/available.lua`（顺序）或 `hooks/pre_install.lua`（选择），在 `tests/hooks_test.lua` 里加一个用例，并更新 [versions.md](versions.md)、[channels.md](channels.md) 和 [arm64.md](arm64.md) 里描述它的地方。
 - **新平台。** `lib/util.lua` 里的 `getOsTypeAndArch` 列出了支持的 CPU。从 git 安装的平台，要把自己加进 `lib/source.lua` 的 `SOURCE_INSTALL_PLATFORMS` 和 `OLDEST_NATIVE`。更新 [platforms.md](platforms.md) 和 [arm64.md](arm64.md) 里的表，有运行器的话，还要把它加进容器测试（[e2e.md](e2e.md)）。
 - **新的构建来源**，像 OpenHarmony 那样：在 `lib/` 里加一个列出名字并负责检出的模块，在 `Available`、`PreInstall` 和 `PostInstall` 里加一个分支，在 `tests/e2e/common/common.go` 里加一个版本类别（`DefaultFlavours`、`DefaultOhosVersion`），再在 `docs/` 里加一页。
-- **某条提示。** 容器测试断言了漂移警告的一部分（`tests/e2e/linux/verify.go` 和 `tests/e2e/windows/verify.go`）。要把 Lua 和这两个文件一起改，还有 [flutter-upgrade.md](flutter-upgrade.md) 里的文字。
+- **某条提示。** 容器测试断言的是核心报出的漂移（`tests/e2e/linux/verify.go` 和 `tests/e2e/windows/verify.go`）。要把 Lua 和这两个文件一起改，还有 [flutter-upgrade.md](flutter-upgrade.md) 里的文字。
 
 ## 已知缺口
 
@@ -216,7 +221,7 @@ done
 
 ## 发布
 
-维护者在默认分支上执行 **Actions → Plugin → Run workflow**，填入不带 `v` 的版本号。共享工作流做了什么，见 [README](../../README_CN.md#发布这个插件)。之后 [vfox-plugins](https://github.com/version-fox/vfox-plugins) 里的 `plugins/flutter.json` 会显示 `vfox add flutter` 提供的版本。这比发布晚几个小时：0.2.2 晚了 1 小时 22 分钟，0.2.3 晚了 4 小时，0.2.4 晚了 2 小时 28 分钟。然后把文档更新到位，两种语言都要：把 [changes.md](changes.md) 里“未发布”下的条目挪到新版本下面，标上发布当天的日期，在它的第一段里把新版本写成最新的发布版，把它写进 [flutter-upgrade.md](flutter-upgrade.md#检查如何进行) 里清单的 `plugin_version`，并去掉其他页面里的“未发布”标记，见[编写文档](#编写文档)。
+维护者在默认分支上执行 **Actions → Plugin → Run workflow**，填入不带 `v` 的版本号。共享工作流做了什么，见 [README](../../README_CN.md#发布这个插件)。之后 [vfox-plugins](https://github.com/version-fox/vfox-plugins) 里的 `plugins/flutter.json` 会显示 `vfox add flutter` 提供的版本。这比发布晚几个小时：0.2.2 晚了 1 小时 22 分钟，0.2.3 晚了 4 小时，0.2.4 晚了 2 小时 28 分钟。然后把文档更新到位，两种语言都要：把 [changes.md](changes.md) 里“未发布”下的条目挪到新版本下面，标上发布当天的日期，在它的第一段里把新版本写成最新的发布版，并去掉其他页面里的“未发布”标记，见[编写文档](#编写文档)。
 
 ## 编写文档
 
