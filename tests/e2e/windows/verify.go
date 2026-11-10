@@ -72,10 +72,14 @@ func verifySdkLayout(ctx context.Context, t *testing.T, ctr tc.Container, box sl
 }
 
 // receiptAnchor reads the version's receipt (`.vfox-receipt.json`, written
-// from the Fingerprint hook) and returns its head fact.
+// from the Fingerprint hook) and returns its head fact. sdk is the global
+// link; the receipt lives in the version directory, the parent of the real
+// SDK directory, so resolve the link target first.
 func receiptAnchor(ctx context.Context, t *testing.T, ctr tc.Container, box slotBox, sdk string) string {
 	t.Helper()
-	versionDir := winDir(sdk)
+	target := strings.TrimSpace(execOK(ctx, t, ctr,
+		"(Get-Item "+pwshQuote(sdk)+").Target", box.vars...))
+	versionDir := winDir(target)
 	raw := execOK(ctx, t, ctr,
 		"Get-Content -Raw "+pwshQuote(versionDir+`\.vfox-receipt.json`), box.vars...)
 	var r common.Receipt

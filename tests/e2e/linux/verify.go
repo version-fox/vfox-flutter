@@ -66,7 +66,10 @@ func verifySdkLayout(ctx context.Context, t *testing.T, ctr tc.Container, flavor
 // and goes quiet again once restored.
 func verifyManifestDrift(ctx context.Context, t *testing.T, ctr tc.Container, version, sdk string) {
 	t.Helper()
-	receiptPath := path.Dir(sdk) + "/.vfox-receipt.json"
+	// sdk is the global link; the receipt lives in the version directory, the
+	// parent of the real SDK directory, so resolve the link first.
+	realSdk := strings.TrimSpace(execOK(ctx, t, ctr, fmt.Sprintf("readlink -f %q", sdk)))
+	receiptPath := path.Dir(realSdk) + "/.vfox-receipt.json"
 	raw := execOK(ctx, t, ctr, fmt.Sprintf("cat %q", receiptPath))
 	var r common.Receipt
 	if err := json.Unmarshal([]byte(raw), &r); err != nil {
