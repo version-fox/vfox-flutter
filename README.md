@@ -28,9 +28,9 @@ https://github.com/version-fox/vfox-dart .
 ### Example: Ubuntu 26.04.1
 
 ```bash
+sudo apt install --assume-yes curl git unzip xz-utils zip libglu1-mesa
 vfox add flutter
 vfox install flutter@3.47.4
-sudo apt install --assume-yes curl git unzip xz-utils zip libglu1-mesa
 vfox use --global flutter@3.47.4
 ```
 
@@ -41,12 +41,29 @@ flutter --version --no-version-check
 dart --version
 ```
 
+The `sudo apt install` line is not a vfox command, and it is not the same on every system. It
+installs the packages that [Flutter's installation guide](https://docs.flutter.dev/install/manual)
+asks for on Linux, with `apt`, the package manager of Ubuntu and other Debian-based distributions.
+It comes first because the plugin runs `git` while it installs. Other Linux distributions have
+their own package managers and package names, macOS gets `git` from the Xcode command-line tools
+and Windows from Git for Windows. See [docs/platforms.md](docs/platforms.md#system-packages) for
+what each package is for and what other systems need.
+
 `vfox search flutter` lists the versions you can install. In an interactive terminal it lets you
 pick one and installs it.
 
 Behavior that only exists on `main` and not in the latest release is marked "Unreleased" in the
 pages below. [docs/changes.md](docs/changes.md) lists it, and
 [docs/install-from-source.md](docs/install-from-source.md) gets you `main`.
+
+## Use cases
+
+By hand, Flutter is a download, an unpack and an edit of `~/.bashrc`, again for every machine and
+every version. With the plugin it is `vfox install` and `vfox use`, and `~/.bashrc` has the one
+line that hooks vfox into your shell and nothing about Flutter. [docs/use-cases.md](docs/use-cases.md)
+sets the two side by side and goes through the situations the plugin is for: a new machine, or one
+that has a hand-made install; projects and teams that each use their own Flutter version; upgrading
+and going back; trying a beta; a mirror in China; scripts and IDEs; and ARM64 machines.
 
 ## Versions and names
 

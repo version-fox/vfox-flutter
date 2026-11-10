@@ -166,7 +166,7 @@ gitcode.com 限制匿名客户端的请求次数。超出限制时它回答 HTTP
 - **预期的版本在 `vfox search` 里没有。** vfox 会把结果缓存 12 小时。`vfox config cache.availableHookDuration 0` 可以关掉缓存。也可能是 Flutter 的索引里还没有它，或者你的镜像那份里还没有。
 - **`3.47.4` 和 `3.47.4-x64` 是两份安装。** 在 x64 机器上它们是同一个 Flutter，见 [versions.md](versions.md#已安装的名称)。
 - **卸载一个版本后，全局版本被换掉了。** 卸载正在使用的版本时，vfox 会选 `vfox list flutter` 里剩下的第一项，那可能是个 beta。
-- **`flutter` 运行的不是 `vfox use` 选的那个 Flutter。** `PATH` 里更靠前的另一个 Flutter 会胜出，比如手动装在 `~/develop/flutter` 的，或者包管理器装的。`command -v flutter` 能看到实际运行的是哪一个，它的路径应当以 `~/.vfox/sdks/flutter/bin` 开头，在项目里则是 `.vfox/sdks/flutter/bin`。
+- **`flutter` 运行的不是 `vfox use` 选的那个 Flutter。** `PATH` 里更靠前的另一个 Flutter 会胜出，比如手动装在 `~/develop/flutter` 的，或者包管理器装的。`command -v flutter` 能看到实际运行的是哪一个，它的路径应当以 `~/.vfox/sdks/flutter/bin` 开头，在项目里则是 `.vfox/sdks/flutter/bin`。项目里的选择只在 `.vfox.toml` 所在的目录生效，子目录里不生效；vfox 又是在提示符出现时才改 `PATH`，所以把 `cd project && flutter run` 写在一行里，运行的还是上一个目录的 Flutter，见 [use-cases.md](use-cases.md#项目用不同的-flutter-版本)。
 - **Flutter 说“A new version of Flutter is available!”并建议执行 `flutter upgrade`。** 别理它：`flutter upgrade` 会在 vfox 的背后改动 SDK，见 [flutter-upgrade.md](flutter-upgrade.md)。`vfox install flutter@stable` 才是升级。`flutter --no-version-check` 可以不显示这条提示。
 - **`FLUTTER_ROOT` 没有设置。** 插件只设置 `PATH`。`flutter` 脚本会自己找到它所在的目录。
 - **没有装 Dart 插件，`dart` 却在。** Flutter SDK 包含 Dart SDK，`dart` 就在它的 `bin` 里。不需要再另外添加 [vfox-dart](https://github.com/version-fox/vfox-dart) 插件。

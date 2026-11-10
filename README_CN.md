@@ -21,9 +21,9 @@ Flutter SDK 自带 Dart SDK；如果通过本插件安装 Flutter SDK，就不�
 ### 示例：Ubuntu 26.04.1
 
 ```bash
+sudo apt install --assume-yes curl git unzip xz-utils zip libglu1-mesa
 vfox add flutter
 vfox install flutter@3.47.4
-sudo apt install --assume-yes curl git unzip xz-utils zip libglu1-mesa
 vfox use --global flutter@3.47.4
 ```
 
@@ -34,9 +34,15 @@ flutter --version --no-version-check
 dart --version
 ```
 
+示例里的 `sudo apt install` 不是 vfox 命令，每个系统的命令也不一样。它用 `apt`（Ubuntu 和其他基于 Debian 的发行版的包管理器），安装 [Flutter 手动安装指南](https://docs.flutter.cn/install/manual)里为 Linux 要求的软件包。它排在最前面，是因为插件安装时要运行 `git`。其他 Linux 发行版有自己的包管理器和包名，macOS 的 `git` 来自 Xcode 命令行工具，Windows 的来自 Git for Windows。每个软件包的用途以及其他系统需要什么，见 [docs/zh-CN/platforms.md](docs/zh-CN/platforms.md#系统软件包)。
+
 `vfox search flutter` 会列出可以安装的版本，在交互式终端里还可以直接选一个并安装。
 
 只存在于 `main`、还没进入最新发布版的行为，在下面各页里标有“未发布”。完整列表见 [docs/zh-CN/changes.md](docs/zh-CN/changes.md)，想直接用上 `main`，见 [docs/zh-CN/install-from-source.md](docs/zh-CN/install-from-source.md)。
+
+## 使用场景
+
+手动安装 Flutter，就是下载、解压，再改一次 `~/.bashrc`，每台机器、每个版本都要重来一遍。用这个插件只需要 `vfox install` 和 `vfox use`，`~/.bashrc` 里只有把 vfox 挂到 Shell 上的那一行，没有任何和 Flutter 有关的内容。[docs/zh-CN/use-cases.md](docs/zh-CN/use-cases.md) 把两种做法并排放在一起，并逐个讲了插件适用的场景：新机器，或者已经手动装过 Flutter 的机器；各个项目、整个团队各用各的 Flutter 版本；升级与回退；试用 beta；中国的镜像；脚本与 IDE；以及 ARM64 机器。
 
 ## 版本与命名
 

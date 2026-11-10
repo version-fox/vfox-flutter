@@ -96,7 +96,7 @@ Pick the scope with `vfox use`'s flags: `--global`, `--project` or `--session`. 
 | `--project` | `.vfox.toml` in the current directory | `.vfox/sdks/flutter/bin` in that directory |
 | `--session` | the current shell only | a directory under `~/.vfox/tmp` |
 
-`.vfox.toml` holds the installed name (`flutter = "3.47.4"`). Commit it, so that the project builds with one Flutter for everybody, and keep `.vfox/` out of git: vfox does not add it to your `.gitignore`. vfox also reads an asdf `.tool-versions` (`flutter 3.47.4`) when its `legacyVersionFile.enable` setting is on, which it is by default in vfox 1.0.13. The plugin has no legacy file of its own, so `.fvmrc` and FVM's `.fvm` directory are not read.
+`.vfox.toml` holds the installed name (`flutter = "3.47.4"`). Commit it, so that the project builds with one Flutter for everybody, and keep `.vfox/` out of git: vfox 1.0.13 adds it to the `.gitignore` of the project when there is one (it prints `Added '.vfox/' to .gitignore`), and does not create a `.gitignore`. The choice applies in the directory that holds `.vfox.toml` and not in its subdirectories, where `flutter` comes from the session or the global choice, see [use-cases.md](use-cases.md#projects-on-different-flutter-versions). vfox also reads an asdf `.tool-versions` (`flutter 3.47.4`) when its `legacyVersionFile.enable` setting is on, which it is by default in vfox 1.0.13. The plugin has no legacy file of its own, so `.fvmrc` and FVM's `.fvm` directory are not read.
 
 The plugin adds `<sdk>/bin` to `PATH`. That puts `flutter` and `dart` on it. It sets no `FLUTTER_ROOT`, and `~/.pub-cache/bin`, where `dart pub global activate` puts executables, stays yours to add.
 

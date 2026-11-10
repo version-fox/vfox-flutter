@@ -21,8 +21,39 @@ OpenHarmony 构建版本在每种机器上都是从 gitcode.com 检出的，见 
 
 - **vfox**，并且已经挂载到 Shell，这样 `vfox use` 之后 `flutter` 才在 `PATH` 里，见 vfox 的[快速入门](https://vfox.dev/zh-hans/guides/quick-start.html)。插件声明 vfox 0.3.0 是它能加载的最老版本。测试跑的是最新的 vfox 发布版和 vfox 的 `main`；主目录里带空格的 Windows 账户需要 vfox 1.0.13 或更新的版本（[vfox#712](https://github.com/version-fox/vfox/pull/712)）。
 - **`git`**：Linux ARM64 和 Windows ARM64 的每次安装，以及 OpenHarmony 构建版本都要用。[flutter-upgrade.md](flutter-upgrade.md) 里的漂移检查只从文件读 SDK 的 `.git/HEAD`，不需要 `git` 可执行文件：没有 `.git` 可读的 SDK 就没有可比的事实。Flutter 本身也需要 `git`。
-- **Flutter 自己的工具。** Android、iOS、Linux、Windows 和 Web 开发各有各的要求（Android SDK、Xcode、Visual Studio、GTK 等等），vfox 不会安装它们，见 [Flutter 的安装指南](https://docs.flutter.cn/install)。[README](../../README_CN.md#安装) 里的示例为 Ubuntu 装了 `curl git unzip xz-utils zip libglu1-mesa`。
+- **Flutter 自己的工具。** Android、iOS、Linux、Windows 和 Web 开发各有各的要求（Android SDK、Xcode、Visual Studio、GTK 等等），vfox 不会安装它们，见 [Flutter 的安装指南](https://docs.flutter.cn/install)。[README](../../README_CN.md#安装) 示例在 Ubuntu 上装的那些软件包是另一回事，见[系统软件包](#系统软件包)。
 - **磁盘空间。** 压缩包 1.6 到 2.3 GB（见 [versions.md](versions.md#安装)），vfox 解压后会把它删掉。Flutter 工具会为你要构建的平台下载所需的内容，SDK 会随之变大。源码安装还要给检出留出空间。你安装的每个名字都是一个独立的 SDK，见 [versions.md](versions.md#已安装的名称)。
+
+## 系统软件包
+
+[README](../../README_CN.md#安装) 的示例里有一条命令不是 vfox 命令：
+
+```bash
+sudo apt install --assume-yes curl git unzip xz-utils zip libglu1-mesa
+```
+
+它安装的是 Flutter 的[手动安装指南](https://docs.flutter.cn/install/manual#download-prerequisites)里为 Linux 要求的软件包。指南以 `apt-get` 作为基于 Debian 的发行版（比如 Ubuntu）的示例，README 写成 `apt` 和 `--assume-yes`（`-y` 的长写法）。指南先执行 `sudo apt-get update -y && sudo apt-get upgrade -y`，README 没有这一步。在全新的容器里（比如 `ubuntu:26.04`），安装前要先更新软件包列表（`apt update`），否则 `apt` 会报 `Unable to locate package curl`。
+
+`sudo apt install --assume-yes` 是属于 Debian、Ubuntu 及其衍生版的部分：`apt` 是它们的包管理器，`sudo` 以 root 身份运行它，`--assume-yes` 对它的确认一律回答“是”。后面的六个名字是 Flutter 给出的清单，写法是 Debian 的包名。
+
+| 软件包 | Flutter 用它做什么 |
+| --- | --- |
+| `git` | 没有它，`flutter` 和 `dart` 会停在 `Unable to find git in your PATH`（`bin/internal/shared.sh`）。插件自己也要运行 `git`，见[前提条件](#前提条件)。 |
+| `curl`、`unzip` | 源码安装第一次运行 `flutter` 时，用 `curl` 下载 Dart SDK，用 `unzip` 解压（`bin/internal/update_dart_sdk.sh`）。`flutter` 工具之后下载的产物，也由 `unzip` 解压。 |
+| `xz-utils` | 提供 `xz`，`tar` 靠它读取 Flutter 的 Linux `.tar.xz` 压缩包。Flutter 的手动步骤用 `tar -xf` 解压它；vfox 自己解压压缩包，所以 `vfox install` 不会调用 `xz`。 |
+| `zip` | 旧版 Flutter 指南把它列在 Flutter 依赖的命令行工具里，没有说明用途。 |
+| `libglu1-mesa` | 提供 `libGLU.so.1`；按旧版 Flutter 指南的说法，`flutter test` 需要它。 |
+
+请在 `vfox install` 之前装好它们，README 的示例就是这样：插件安装时会运行 `git`。没有 `git`，Linux ARM64 和 Windows ARM64 的安装以及 OpenHarmony 构建版本会失败，因为这些检出要运行 `git`。压缩包安装的漂移检查不需要 `git` 可执行文件：它只从文件读 SDK 的 `.git/HEAD`，见[前提条件](#前提条件)。
+
+每个系统的命令都不一样。Flutter 的指南让你用自己的包管理器，`apt-get` 只是示例，而上面的名字是 Debian 的写法：比如 Fedora 里提供 `libGLU.so.1` 的包叫 `mesa-libGLU`。
+
+| 系统 | 要安装什么 | 命令 |
+| --- | --- | --- |
+| Ubuntu、Debian 和其他基于 Debian 的发行版 | 上面的六个软件包 | `sudo apt install --assume-yes curl git unzip xz-utils zip libglu1-mesa` |
+| 其他 Linux 发行版 | 同样的工具和库，用你的发行版里的包名 | 你的包管理器（比如 `dnf` 或 `pacman`）的安装命令 |
+| macOS | Xcode 命令行工具，Flutter 依赖的工具（包括 `git`）随它而来 | `xcode-select --install` |
+| Windows | [Git for Windows](https://git-scm.com/downloads/win) | `winget install --id Git.Git --source winget --exact` |
 
 ## 插件会连接的地址
 
