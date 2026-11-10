@@ -19,7 +19,7 @@ PLUGIN = {}
 --- Plugin name
 PLUGIN.name = "flutter"
 --- Plugin version
-PLUGIN.version = "0.2.5"
+PLUGIN.version = "0.2.6"
 --- Plugin homepage
 PLUGIN.homepage = "https://github.com/version-fox/vfox-flutter"
 --- Plugin license, please choose a correct license according to your needs.
