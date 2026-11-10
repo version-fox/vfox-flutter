@@ -28,7 +28,7 @@ failed to install flutter
 
 ### `flutter@3.47.4 is already installed`
 
-这个名字已经安装了。vfox 不会再下载，也不会重新写 `.vfox-manifest`，见 [flutter-upgrade.md](flutter-upgrade.md#关闭检查)。
+这个名字已经安装了。vfox 不会再下载。要用全新的拷贝替换它，比如 `flutter upgrade` 已经把它就地改动过，执行 `vfox install --reinstall flutter@3.47.4`，见 [flutter-upgrade.md](flutter-upgrade.md#恢复已漂移的-sdk)。
 
 ### `get version failed: ... (status ...)`
 
@@ -59,9 +59,9 @@ vfox 下载了压缩包，它的 SHA-256 和 Flutter 发布索引里的不一样
 
 插件现在只列这种文件最新的那一条，所以这三个版本都能装。0.2.5 之前的版本把所有条目都列出来，装排在最前面的那条。在 0.2.4 里，条目相同时顺序是任意的，还取决于列表的其余部分，比如其中有多少个 OpenHarmony 版本。2026-10-21 时，它在 Linux x64 上三个全都取了旧条目，在 macOS 和 Windows 上也有一部分，安装就会像上面这样结束。请更新插件，或者装它旁边的版本（用 `3.13.2` 或 `3.13.4` 代替 `3.13.3`）。没有跳过校验的开关。
 
-### `Warning: flutter SDK at ... has drifted from the version vfox installed.`
+### `flutter@3.47.4 has changed since vfox installed it`
 
-`flutter upgrade`、`flutter channel` 或某条 `git` 命令移动了 SDK。`vfox use` 仍然会选中它。见 [flutter-upgrade.md](flutter-upgrade.md)。
+`flutter upgrade`、`flutter channel` 或某条 `git` 命令移动了 SDK。`vfox use` 仍然会选中它。用 `vfox install --reinstall flutter@3.47.4` 恢复它。见 [flutter-upgrade.md](flutter-upgrade.md)。
 
 ### `flutter does not support the 386 architecture`
 
@@ -170,7 +170,7 @@ gitcode.com 限制匿名客户端的请求次数。超出限制时它回答 HTTP
 - **Flutter 说“A new version of Flutter is available!”并建议执行 `flutter upgrade`。** 别理它：`flutter upgrade` 会在 vfox 的背后改动 SDK，见 [flutter-upgrade.md](flutter-upgrade.md)。`vfox install flutter@stable` 才是升级。`flutter --no-version-check` 可以不显示这条提示。
 - **`FLUTTER_ROOT` 没有设置。** 插件只设置 `PATH`。`flutter` 脚本会自己找到它所在的目录。
 - **没有装 Dart 插件，`dart` 却在。** Flutter SDK 包含 Dart SDK，`dart` 就在它的 `bin` 里。不需要再另外添加 [vfox-dart](https://github.com/version-fox/vfox-dart) 插件。
-- **`.vfox-manifest` 在 SDK 的 git 里是未跟踪的。** 这是插件写的，见 [flutter-upgrade.md](flutter-upgrade.md)。
+- **`.vfox-manifest` 在 SDK 的 git 里是未跟踪的。** 这是这个插件 `Fingerprint` 钩子之前的版本写的，当前插件既不写它也不读它，可以删掉。见 [flutter-upgrade.md](flutter-upgrade.md#检查如何进行)。
 - **在中国，`flutter pub get` 很慢或者失败。** 包是从 `PUB_HOSTED_URL` 拉取的，插件不会去动它，见 [mirror.md](mirror.md#哪种安装用哪个镜像)。
 - **第一次执行 `flutter` 命令会下载很多东西。** Flutter 工具在你第一次为某个平台构建时才拉取所需的内容，而且它为此读取 `FLUTTER_STORAGE_BASE_URL`，所以要一直保持镜像变量处于设置状态，见 [mirror.md](mirror.md#这个变量的作用)。
 

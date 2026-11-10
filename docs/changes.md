@@ -4,6 +4,10 @@
 
 What changed in each release, as a user notices it. GitHub's release pages and the pull requests linked below have the rest. The newest release is 0.2.5. When `main` is ahead of it, the changes it has are listed first, under "Unreleased", and [install-from-source.md](install-from-source.md) gets you those now.
 
+## Unreleased
+
+- Drift detection goes through vfox's `Fingerprint` hook (needs vfox 1.1.0 or later): the plugin reports the SDK checkout's git HEAD from files only, vfox records it in the version's receipt and reports `sdk.drift` after `vfox use` and in `vfox doctor`, fixed with `vfox install --reinstall`. The plugin no longer writes `.vfox-manifest` on new vfox and no longer prints its own warning there, so the same drift is not reported twice; vfox older than 1.1.0 keeps the old warning. See [flutter-upgrade.md](flutter-upgrade.md).
+
 ## 0.2.5 (2026-10-21)
 
 - Installing an official release no longer asks gitcode.com ([#50](https://github.com/version-fox/vfox-flutter/pull/50)). Release 0.2.4 asked it for every install, and when gitcode.com rate-limited its API (HTTP 429) an install or a `vfox search` waited up to 6.5 minutes and printed nothing: 212 and 392 seconds on 2026-10-21. `vfox search` and the `latest` of `vfox install` still list the OpenHarmony releases, but they make two attempts, give up at HTTP 429, and print a warning on stderr when they get no list. Installing an OpenHarmony build waits as before. See [troubleshooting.md](troubleshooting.md#gitcodecom-is-rate-limited).

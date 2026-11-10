@@ -20,7 +20,7 @@ OpenHarmony 构建版本在每种机器上都是从 gitcode.com 检出的，见 
 ## 前提条件
 
 - **vfox**，并且已经挂载到 Shell，这样 `vfox use` 之后 `flutter` 才在 `PATH` 里，见 vfox 的[快速入门](https://vfox.dev/zh-hans/guides/quick-start.html)。插件声明 vfox 0.3.0 是它能加载的最老版本。测试跑的是最新的 vfox 发布版和 vfox 的 `main`；主目录里带空格的 Windows 账户需要 vfox 1.0.13 或更新的版本（[vfox#712](https://github.com/version-fox/vfox/pull/712)）。
-- **`git`**：Linux ARM64 和 Windows ARM64 的每次安装、OpenHarmony 构建版本，以及 [flutter-upgrade.md](flutter-upgrade.md) 里的漂移检查都要用。漂移检查在安装时向 `git` 要 SDK 的提交；没有 `git` 时安装依然会成功，写出的 `.vfox-manifest` 里没有提交，`vfox use` 永远不会警告。Flutter 本身也需要 `git`。
+- **`git`**：Linux ARM64 和 Windows ARM64 的每次安装，以及 OpenHarmony 构建版本都要用。[flutter-upgrade.md](flutter-upgrade.md) 里的漂移检查只从文件读 SDK 的 `.git/HEAD`，不需要 `git` 可执行文件：没有 `.git` 可读的 SDK 就没有可比的事实。Flutter 本身也需要 `git`。
 - **Flutter 自己的工具。** Android、iOS、Linux、Windows 和 Web 开发各有各的要求（Android SDK、Xcode、Visual Studio、GTK 等等），vfox 不会安装它们，见 [Flutter 的安装指南](https://docs.flutter.cn/install)。[README](../../README_CN.md#安装) 里的示例为 Ubuntu 装了 `curl git unzip xz-utils zip libglu1-mesa`。
 - **磁盘空间。** 压缩包 1.6 到 2.3 GB（见 [versions.md](versions.md#安装)），vfox 解压后会把它删掉。Flutter 工具会为你要构建的平台下载所需的内容，SDK 会随之变大。源码安装还要给检出留出空间。你安装的每个名字都是一个独立的 SDK，见 [versions.md](versions.md#已安装的名称)。
 

@@ -86,3 +86,26 @@ function compare_versions(v1, v2)
 
     return 0
 end
+
+-- Whether the running vfox knows the Fingerprint hook (added in vfox 1.1.0
+-- with `vfox link`, `vfox doctor`, aliases and `path.mode`). Older vfox
+-- versions never load a hook file they do not know, so the plugin keeps its
+-- own drift check for them and lets the core report drift on newer ones.
+-- `runtimeVersion` is the `ctx.runtimeVersion` of the calling hook when it
+-- has one; otherwise the global `RUNTIME.version` answers.
+function supportsFingerprint(runtimeVersion)
+    local v = runtimeVersion
+    if v == nil or v == "" then
+        v = (RUNTIME and RUNTIME.version) or ""
+    end
+    v = tostring(v):gsub("^v", "")
+    local major, minor = v:match("^(%d+)%.(%d+)")
+    if major == nil then
+        return false
+    end
+    major, minor = tonumber(major), tonumber(minor)
+    if major == nil or minor == nil then
+        return false
+    end
+    return major > 1 or (major == 1 and minor >= 1)
+end

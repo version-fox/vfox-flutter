@@ -584,6 +584,114 @@ tests[#tests + 1] = {
         end
     end,
 }
+tests[#tests + 1] = {
+    "the running vfox is recognised as new enough for Fingerprint",
+    function()
+        setup("linux", "amd64")
+        assert(supportsFingerprint("1.1.0") == true)
+        assert(supportsFingerprint("v1.1.0") == true)
+        assert(supportsFingerprint("2.0.0") == true)
+        assert(supportsFingerprint("1.0.13") == false)
+        assert(supportsFingerprint("0.6.0") == false)
+        assert(supportsFingerprint("1.0.0") == false)
+        RUNTIME.version = "1.1.0"
+        assert(supportsFingerprint(nil) == true)
+        assert(supportsFingerprint("") == true)
+        RUNTIME.version = "1.0.13"
+        assert(supportsFingerprint(nil) == false)
+        RUNTIME.version = nil
+        assert(supportsFingerprint(nil) == false)
+        assert(supportsFingerprint("") == false)
+    end,
+}
+tests[#tests + 1] = {
+    "Fingerprint reads the git HEAD from files only",
+    function()
+        setup("linux", "amd64")
+        local manifest = require("manifest")
+        local base = os.tmpname()
+        os.remove(base)
+        local function write(path, text)
+            local dir = path:match("^(.+)/[^/]+$")
+            os.execute("mkdir -p '" .. dir .. "'")
+            local f = assert(io.open(path, "wb"))
+            f:write(text)
+            f:close()
+        end
+        local function head(path, version)
+            return manifest.fingerprintHead(path, version)
+        end
+        -- detached HEAD in the SDK root
+        write(base .. "/sdk/.git/HEAD", "abc123def456abc123def456abc123def456abcd\n")
+        equal(head(base .. "/sdk", "3.47.4"), "abc123def456abc123def456abc123def456abcd")
+        -- a ref that lives in its own file
+        write(base .. "/ref/.git/HEAD", "ref: refs/heads/beta\n")
+        write(base .. "/ref/.git/refs/heads/beta", "cafecafecafecafecafecafecafecafecafecafe\n")
+        equal(head(base .. "/ref", "3.47.4"), "cafecafecafecafecafecafecafecafecafecafe")
+        -- a ref that only lives in packed-refs
+        write(base .. "/packed/.git/HEAD", "ref: refs/heads/stable\n")
+        write(
+            base .. "/packed/.git/packed-refs",
+            "# pack-refs\ndeadbeefdeadbeefdeadbeefdeadbeefdeadbeef refs/heads/stable\n"
+        )
+        equal(head(base .. "/packed", "3.47.4"), "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef")
+        -- the older layout where the hook is given the version directory
+        write(base .. "/ver/flutter-1.0/.git/HEAD", "1111111111111111111111111111111111111111\n")
+        equal(head(base .. "/ver", "1.0"), "1111111111111111111111111111111111111111")
+        -- nothing to check is silent: no .git, no HEAD, empty path
+        equal(head(base .. "/nosuch", "1.0"), nil)
+        equal(head("", "1.0"), nil)
+        equal(head(base .. "/sdk", nil), "abc123def456abc123def456abc123def456abcd")
+        os.execute("rm -rf '" .. base .. "'")
+    end,
+}
+tests[#tests + 1] = {
+    "Fingerprint returns the head fact and is silent without git",
+    function()
+        setup("linux", "amd64")
+        dofile("hooks/fingerprint.lua")
+        local base = os.tmpname()
+        os.remove(base)
+        os.execute("mkdir -p '" .. base .. "/sdk/.git'")
+        local f = assert(io.open(base .. "/sdk/.git/HEAD", "wb"))
+        f:write("abc123def456abc123def456abc123def456abcd\n")
+        f:close()
+        local r = PLUGIN:Fingerprint({ path = base .. "/sdk", version = "3.47.4", sdkInfo = {} })
+        assert(r ~= nil and r.facts ~= nil, "Fingerprint must report facts")
+        equal(r.facts.head, "abc123def456abc123def456abc123def456abcd")
+        assert(PLUGIN:Fingerprint({ path = base .. "/nosuch", version = "1.0", sdkInfo = {} }) == nil)
+        -- the main SDK info is a fallback when ctx.path is not the SDK
+        local r2 = PLUGIN:Fingerprint({
+            path = base .. "/nosuch",
+            version = "3.47.4",
+            sdkInfo = { flutter = { path = base .. "/sdk", version = "3.47.4" } },
+        })
+        assert(r2 ~= nil and r2.facts.head == "abc123def456abc123def456abc123def456abcd")
+        os.execute("rm -rf '" .. base .. "'")
+    end,
+}
+tests[#tests + 1] = {
+    "PreUse skips its own warning on vfox with Fingerprint",
+    function()
+        setup("linux", "amd64")
+        dofile("hooks/fingerprint.lua")
+        dofile("hooks/pre_use.lua")
+        -- new vfox: no warning, no manifest read, just the version
+        local out = PLUGIN:PreUse({ version = "3.47.4", runtimeVersion = "1.1.0", installedSdks = {} })
+        equal(out.version, "3.47.4")
+        -- old vfox without a manifest is silent too and still returns the version
+        local out2 = PLUGIN:PreUse({
+            version = "3.47.4",
+            runtimeVersion = "1.0.13",
+            installedSdks = { ["3.47.4"] = { path = "/nosuch-xyz" } },
+        })
+        equal(out2.version, "3.47.4")
+        -- old vfox with RUNTIME.version only
+        RUNTIME.version = "1.0.13"
+        local out3 = PLUGIN:PreUse({ version = "3.47.4", installedSdks = {} })
+        equal(out3.version, "3.47.4")
+    end,
+}
 
 local failures = 0
 for _, test in ipairs(tests) do

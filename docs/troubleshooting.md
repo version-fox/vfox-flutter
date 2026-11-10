@@ -28,7 +28,7 @@ The plugin found nothing for the name you typed. The usual reasons:
 
 ### `flutter@3.47.4 is already installed`
 
-The name is installed. vfox does not download again, and does not write the `.vfox-manifest` again, see [flutter-upgrade.md](flutter-upgrade.md#disabling-the-check).
+The name is installed. vfox does not download again. To replace it with a fresh copy, for example after `flutter upgrade` moved it in place, run `vfox install --reinstall flutter@3.47.4`, see [flutter-upgrade.md](flutter-upgrade.md#recovering-a-drifted-sdk).
 
 ### `get version failed: ... (status ...)`
 
@@ -59,9 +59,9 @@ vfox downloaded the archive and its SHA-256 differs from the one in Flutter's re
 
 The plugin lists only the newest entry of such a file, so these three install. Releases before 0.2.5 list every entry and install the one that sorts first. In release 0.2.4 that is arbitrary for entries that are equal, and it also depends on the rest of the list, such as how many OpenHarmony releases it holds. On 2026-10-21 it took an old entry for all three on Linux x64, and for some of them on macOS and Windows, and the install ended as above. Update the plugin, or install a release next to it (`3.13.2` or `3.13.4` instead of `3.13.3`). There is no switch to skip the check.
 
-### `Warning: flutter SDK at ... has drifted from the version vfox installed.`
+### `flutter@3.47.4 has changed since vfox installed it`
 
-`flutter upgrade`, `flutter channel` or a `git` command moved the SDK. `vfox use` still selects it. See [flutter-upgrade.md](flutter-upgrade.md).
+`flutter upgrade`, `flutter channel` or a `git` command moved the SDK. `vfox use` still selects it. Restore it with `vfox install --reinstall flutter@3.47.4`. See [flutter-upgrade.md](flutter-upgrade.md).
 
 ### `flutter does not support the 386 architecture`
 
@@ -170,7 +170,7 @@ Minutes later the same API answered in a second. Without a 429 a failing request
 - **Flutter says "A new version of Flutter is available!" and suggests `flutter upgrade`.** Ignore it: `flutter upgrade` moves the SDK under vfox, see [flutter-upgrade.md](flutter-upgrade.md). `vfox install flutter@stable` is the upgrade. `flutter --no-version-check` leaves the banner out.
 - **`FLUTTER_ROOT` is not set.** The plugin sets only `PATH`. The `flutter` script finds its own directory.
 - **`dart` is there without a Dart plugin.** The Flutter SDK includes the Dart SDK, and `dart` is in its `bin`. There is no need to add the [vfox-dart](https://github.com/version-fox/vfox-dart) plugin next to it.
-- **`.vfox-manifest` is untracked in the SDK's git.** The plugin writes it, see [flutter-upgrade.md](flutter-upgrade.md).
+- **`.vfox-manifest` is untracked in the SDK's git.** Releases of this plugin before the `Fingerprint` hook wrote it; the current plugin neither writes nor reads it, and it can be deleted. See [flutter-upgrade.md](flutter-upgrade.md#how-the-check-works).
 - **`flutter pub get` is slow or fails in China.** Packages come from `PUB_HOSTED_URL`, which the plugin does not touch, see [mirror.md](mirror.md#which-installs-use-which-mirror).
 - **The first `flutter` command downloads a lot.** The Flutter tool fetches what it needs the first time you build for a platform, and it reads `FLUTTER_STORAGE_BASE_URL` for it, so keep the mirror variable set, see [mirror.md](mirror.md#what-the-variable-does).
 

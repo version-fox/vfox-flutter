@@ -15,82 +15,73 @@ vfox use --global flutter@3.47.4
 
 ## 恢复已漂移的 SDK
 
-如果你已经就地升级过了，这个插件会在每次 `vfox use` 那个版本时打印一条警告，并给出恢复它的命令：
+如果你已经就地升级过了，用下面这条命令恢复那个版本：
 
 ```bash
-vfox uninstall flutter@3.47.0
-vfox install  flutter@3.47.0
-vfox use      flutter@3.47.0
+vfox install --reinstall flutter@3.47.0
 ```
+
+`vfox doctor` 会报告同一个问题（`sdk.drift`）。通过 `vfox link` 登记的 SDK 变了，只会作为提示出现：vfox 并不拥有那个 SDK。
 
 ## 警告内容
 
-SDK 的 HEAD 不再是 vfox 安装时的那个提交之后，`vfox use flutter@3.47.4` 打印的就是这样：
+这需要 vfox 1.1.0 或更新的版本，它会在安装时记下 SDK 的状态，每次 `vfox use` 再拿来比对。SDK 的 HEAD 不再是 vfox 安装时的那个提交之后，`vfox use flutter@3.47.4` 打印的就是这样：
 
 ```
-Warning: flutter SDK at ~/.vfox/cache/flutter/v-3.47.4 has drifted from the version vfox installed.
-  vfox installed: flutter@3.47.4 (git HEAD 9584c6713b324636289d067944a46fd6b49df14b)
-  current git HEAD: abaf9c523780a608bd46686fd5e53740a07077f8
-  reason: the SDK's git HEAD no longer matches the commit vfox installed
-
-This typically happens when `flutter upgrade` or a similar in-place command
-is run inside a vfox-managed SDK. vfox manages SDK versions by directory and
-does not track in-place mutations, so the version you get may differ from
-the one you asked for.
-
-To restore flutter@3.47.4:
-  vfox uninstall flutter@3.47.4
-  vfox install  flutter@3.47.4
-  vfox use      flutter@3.47.4
-
-To upgrade to a newer version, use vfox directly:
-  vfox install flutter@<new-version>
-  vfox use     flutter@<new-version>
+flutter@3.47.4 has changed since vfox installed it (head: 9584c6713b32… -> abaf9c523780…).
+  Something modified the SDK in place, for example a self-update command. vfox manages versions by directory and does not track that.
+  To move to a newer version, install it with vfox instead: vfox install flutter@<new-version>
+  Fix: vfox install --reinstall flutter@3.47.4
 ```
 
-原因有两种，`reason:` 后面的那行说明是哪一种：
-
-| 原因 | 含义 |
-| --- | --- |
-| `the SDK's git HEAD no longer matches the commit vfox installed` | 提交变了。`flutter upgrade`、`flutter downgrade`、`flutter channel` 和 `git checkout` 都会这样 |
-| `vfox can no longer read the SDK's git HEAD (its .git may be broken)` | `git` 在 SDK 里执行失败：`.git` 目录损坏了，或者 `git` 已经不在了 |
-
-第一行里的路径，就是 `vfox info flutter@3.47.4` 打印的目录。SDK 是它里面的 `flutter-3.47.4` 目录。
-
-## 检查如何进行
-
-安装时，插件会在 SDK 的 `.git` 旁边写一个 `.vfox-manifest` 文件，记录预期的 git HEAD，之后每次 `vfox use` 都会重新检查。
-
-清单是 SDK 根目录里的一个小 JSON 文件，`flutter-3.47.4/.vfox-manifest`：
-
-```json
-{"expected_head":"9584c6713b324636289d067944a46fd6b49df14b","installed_at":1792523751,"plugin":"vfox-flutter","plugin_version":"0.2.5","version":"3.47.4"}
-```
-
-`expected_head` 是 vfox 刚解压完 SDK 时 `git rev-parse HEAD` 打印的结果，`installed_at` 是安装时间，单位是自 1970 年以来的秒数。`vfox use` 时检查会再执行一次 `git rev-parse HEAD`，并比较两者。压缩包安装、源码安装和 OpenHarmony 构建版本都会有清单。在 SDK 里执行 `git status`，这个文件会显示为未跟踪。
+`head:` 后面先是记下来的提交，再是现在的提交，都缩短显示了。当前 HEAD 完全读不出来时（`.git` 损坏了），那里会写 `unreadable`，而不是一个提交。
 
 警告只是警告：`vfox use` 仍然会选中你要的版本，退出码是 0。没有 `.git` 目录的 SDK 不检查。
 
-没有可比较的东西时就什么都不检查：没有清单的 SDK（由早于 0.2.3 的插件安装的）、清单里没有 `expected_head` 的（安装时没有 `git`），以及 vfox 不认识的版本，都不会有任何提示。
+vfox 老于 1.1.0 时，插件会打印它自己的警告（它加载不到 `Fingerprint` 钩子），并给出手工重装的命令。把 vfox 升级到 1.1.0 或更新，就能用上面的检查。
+
+## 检查如何进行
+
+安装时和 `vfox link` 登记时，插件通过 `Fingerprint` 钩子报告 SDK 检出所在的提交：只从文件里读 `.git/HEAD`（以及它指向的 ref 或 `packed-refs`），不跑任何命令。vfox 把这个事实记在版本的收据里，也就是 `vfox info flutter@3.47.4` 打印的那个目录下的 `.vfox-receipt.json`：
+
+```json
+{
+  "schema": 1,
+  "sdk": "flutter",
+  "version": "3.47.4",
+  "origin": "installed",
+  "facts": {
+    "head": "9584c6713b324636289d067944a46fd6b49df14b"
+  }
+}
+```
+
+`vfox use` 和 `vfox doctor` 在事实对不上时报告 `sdk.drift`。压缩包安装、源码安装和 OpenHarmony 构建版本都会报告。插件现在读不出来的事实，也算是一种变化。
+
+没有可比较的东西时就什么都不检查：没有事实的 SDK（安装时就没有 `.git` 可读）、vfox 开始记收据之前安装的版本（见下面的 `vfox doctor --adopt`），以及 vfox 不认识的版本，都不会有任何提示。
+
+比这个插件更老的版本装出来的 SDK，根目录里可能还留着 `.vfox-manifest` 文件（`flutter-3.47.0/.vfox-manifest`）。当前插件既不写它也不读它，它会被忽略，可以删掉。留着的时候，在 SDK 里执行 `git status` 会把它显示为未跟踪。
+
+在 vfox 开始记收据之前安装的版本，没有收据可比。`vfox doctor` 会说明（`sdk.no-receipt`），并可以按要求把现在的状态记为基准：
+
+```bash
+vfox doctor --adopt flutter@3.47.0
+```
 
 ## 关闭检查
 
-删掉受影响那份安装里的 `.vfox-manifest` 文件。这个文件是真正的安装才会写出来的，所以只有卸载再重新安装那个版本，它才会回来；单独执行 `vfox install` 会跳过已经安装的版本，文件依然不存在。
-
-`vfox info --format '{{.Path}}' flutter@3.47.0` 打印的是 SDK 上一层的目录，所以清单在更下一层的 `flutter-3.47.0` 里。这个目录以已安装的名字命名，如果你安装时带了架构后缀，它也会带（`flutter-3.47.0-x64`）。
-
-### Ubuntu 26.04.1
-
-在 Bash 中执行：
+这个检查是 `vfox use` 选中版本后运行的快速检查之一。要停掉它们：
 
 ```bash
-rm "$(vfox info --format '{{.Path}}' flutter@3.47.0)/flutter-3.47.0/.vfox-manifest"
+vfox config diagnostics.onUse false
 ```
 
-### Windows 11
+只想让某一个版本不再报这一项，在 `config.yaml` 里把它加到 `diagnostics.ignore`：
 
-这里假设已经装好了 PowerShell 7，在 PowerShell 7 中执行：
-
-```powershell
-Remove-Item "$(vfox info --format '{{.Path}}' flutter@3.47.0)/flutter-3.47.0/.vfox-manifest"
+```yaml
+diagnostics:
+  ignore:
+    - "sdk.drift:flutter@3.47.0"
 ```
+
+其余的检查项，见 vfox 的[配置说明](https://vfox.dev/zh-hans/guides/configuration.html#diagnostics-settings)和 [`vfox doctor`](https://vfox.dev/zh-hans/usage/core-commands.html#doctor)。

@@ -4,6 +4,10 @@
 
 每个版本改了什么，写成用户能感受到的样子。其余的细节见 GitHub 的发布页面和下面链接的 pull request。最新的发布版是 0.2.5。`main` 领先于它时，多出来的改动列在最前面的“未发布”下，想现在就用上它们，见 [install-from-source.md](install-from-source.md)。
 
+## 未发布
+
+- 漂移检查走 vfox 的 `Fingerprint` 钩子（需要 vfox 1.1.0 或更新的版本）：插件只从文件读取 SDK 检出的 git HEAD 并报告，vfox 把它记在版本的收据里，`vfox use` 之后和 `vfox doctor` 里报告 `sdk.drift`，用 `vfox install --reinstall` 恢复。新版 vfox 上插件不再写 `.vfox-manifest`，也不再打印自己的警告，以免同一处漂移报两次；老于 1.1.0 的 vfox 保留旧的警告。见 [flutter-upgrade.md](flutter-upgrade.md)。
+
 ## 0.2.5 (2026-10-21)
 
 - 安装官方版本不再访问 gitcode.com（[#50](https://github.com/version-fox/vfox-flutter/pull/50)）。0.2.4 每次安装都要问它，而 gitcode.com 对它的 API 限流（HTTP 429）时，一次安装或一次 `vfox search` 最多会等 6.5 分钟，什么也不打印：2026-10-21 测得 212 秒和 392 秒。`vfox search` 和 `vfox install` 的 `latest` 仍然会列出 OpenHarmony 的发布版本，但它们只尝试两次，遇到 HTTP 429 就放弃，拿不到列表时在 stderr 上打印一条警告。安装 OpenHarmony 构建版本还是和以前一样会等。见 [troubleshooting.md](troubleshooting.md#gitcodecom-被限流)。

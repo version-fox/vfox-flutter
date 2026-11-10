@@ -80,7 +80,12 @@ function PLUGIN:PostInstall(ctx)
         return
     end
     if sdk.path ~= nil and sdk.path ~= "" then
-        pcall(manifest.write, sdk.path, sdk)
+        -- vfox 1.1.0 records the Fingerprint fact in the version's receipt, so
+        -- the `.vfox-manifest` file is only written for older vfox which never
+        -- loads `hooks/fingerprint.lua` and still needs it for `PreUse`.
+        if not supportsFingerprint(ctx and ctx.runtimeVersion) then
+            pcall(manifest.write, sdk.path, sdk)
+        end
         pcall(manifest.touchPubspecLock, sdk.path)
     end
     if ohos.isOhosVersion(sdk.version) then
