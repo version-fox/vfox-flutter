@@ -221,7 +221,7 @@ The Linux row of the table is where the script starts to ask (storage has the SD
 
 ## Releasing
 
-A maintainer runs **Actions → Plugin → Run workflow** on the default branch with the version, without `v`. The [README](../README.md#releasing-this-plugin) describes what the shared workflow does. Afterwards `plugins/flutter.json` in [vfox-plugins](https://github.com/version-fox/vfox-plugins) shows the version that `vfox add flutter` serves. That lags the release by hours: 1 h 22 min for 0.2.2, 4 h for 0.2.3 and 2 h 28 min for 0.2.4. Then bring the docs up to date, in both languages: move the "Unreleased" entries of [changes.md](changes.md) under the new version, dated with the day of the release, name that version as the newest one in its first paragraph, and take the "Unreleased" marks out of the other pages, see [Writing the docs](#writing-the-docs).
+A maintainer runs **Actions → Plugin → Run workflow** on the default branch with the version, without `v`. The [README](../README.md#releasing-this-plugin) describes what the shared workflow does. Afterwards `plugins/flutter.json` in [vfox-plugins](https://github.com/version-fox/vfox-plugins) shows the version that `vfox add flutter` serves. That lags the release by hours: 4 h for 0.2.3, 2 h 28 min for 0.2.4 and 2 h 20 min for 0.2.5. Then bring the docs up to date, in both languages: move the "Unreleased" entries of [changes.md](changes.md) under the new version, dated with the day of the release, name that version as the newest one in its first paragraph, and take the "Unreleased" marks out of the other pages, see [Writing the docs](#writing-the-docs).
 
 ## Writing the docs
 

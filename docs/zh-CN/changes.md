@@ -2,12 +2,12 @@
 
 [中文](changes.md) | [English](../changes.md)
 
-每个版本改了什么，写成用户能感受到的样子。其余的细节见 GitHub 的发布页面和下面链接的 pull request。最新的发布版是 0.2.5。`main` 领先于它时，多出来的改动列在最前面的“未发布”下，想现在就用上它们，见 [install-from-source.md](install-from-source.md)。
+每个版本改了什么，写成用户能感受到的样子。其余的细节见 GitHub 的发布页面和下面链接的 pull request。最新的发布版是 0.2.6。`main` 领先于它时，多出来的改动列在最前面的“未发布”下，想现在就用上它们，见 [install-from-source.md](install-from-source.md)。
 
-## 未发布
+## 0.2.6 (2026-11-10)
 
-- 漂移检查走 vfox 的 `Fingerprint` 钩子（需要 vfox 1.1.0 或更新的版本）：插件只从文件读取 SDK 检出的 git HEAD 并报告，vfox 把它记在版本的收据里，`vfox use` 之后和 `vfox doctor` 里报告 `sdk.drift`，用 `vfox install --reinstall` 恢复。其他管理器（Homebrew、mise、asdf、FVM、手动安装）装出来、登记给 vfox 的 SDK，只要还带着 `.git`，同样按 info 级别的提示覆盖（vfox 不拥有它）。新版 vfox 上插件不再写 `.vfox-manifest`，也不再打印自己的警告，以免同一处漂移报两次；老于 1.1.0 的 vfox 保留旧的警告。见 [flutter-upgrade.md](flutter-upgrade.md)。
-- `vfox link --detect flutter` 会找出机器上已有的 Flutter SDK（Homebrew、mise、asdf、FVM 和手动安装在惯常位置的），找到就登记（需要 vfox 1.1.0 或更新的版本）。不在这些地方的，用 `vfox link flutter@<名字> <路径>`。
+- 漂移检查走 vfox 的 `Fingerprint` 钩子（[#55](https://github.com/version-fox/vfox-flutter/pull/55)）（需要 vfox 1.1.0 或更新的版本）：插件只从文件读取 SDK 检出的 git HEAD 并报告，vfox 把它记在版本的收据里，`vfox use` 之后和 `vfox doctor` 里报告 `sdk.drift`，用 `vfox install --reinstall` 恢复。其他管理器（Homebrew、mise、asdf、FVM、手动安装）装出来、登记给 vfox 的 SDK，只要还带着 `.git`，同样按 info 级别的提示覆盖（vfox 不拥有它）。新版 vfox 上插件不再写 `.vfox-manifest`，也不再打印自己的警告，以免同一处漂移报两次；老于 1.1.0 的 vfox 保留旧的警告。见 [flutter-upgrade.md](flutter-upgrade.md)。
+- `vfox link --detect flutter` 会找出机器上已有的 Flutter SDK（Homebrew、mise、asdf、FVM 和手动安装在惯常位置的），找到就登记（[#55](https://github.com/version-fox/vfox-flutter/pull/55)）（需要 vfox 1.1.0 或更新的版本）。不在这些地方的，用 `vfox link flutter@<名字> <路径>`。
 
 ## 0.2.5 (2026-10-21)
 
